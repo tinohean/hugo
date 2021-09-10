@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>druid on 半岛无风</title>
+    <link>http://tinohean.top/tags/druid/</link>
+    <description>Recent content in druid on 半岛无风</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 16 Oct 2017 22:43:41 +0000</lastBuildDate><atom:link href="http://tinohean.top/tags/druid/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>监控方案-druid篇</title>
+      <link>http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/</link>
+      <pubDate>Mon, 16 Oct 2017 22:43:41 +0000</pubDate>
+      
+      <guid>http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/</guid>
+      <description>监控系统-druid.io 公司的业务日志是通过syslog-ng喂给kafka,提供给spark消费并进行数据清洗，然后把数据导入到druid进行实时聚合查询。
+监控维度覆盖到了druid.io的性能指标上，而针对druid.io的监控能找到的文档不多,官方文档略显简陋而且分散,方案落地的时候碰到了很多坑。
+趁记忆还新鲜整理出这篇文章。
+部署及配置 方案说明 druid配置graphite-emitter,把相关metrics发送给graphite,然后由grafana做前端展示及告警
+版本说明 系统版本：Ubuntu 14.04
+druid版本：imply-2.5.5 druid-0.12.0
+graphite版本: latest
+druid配置 关于监控，druid有几个相关术语简单解释下。
+ metrics monitors emitter  metrics  druid提供的用于监控的各类指标，包括各节点的系统资源使用统计，请求相关统计等。
+格式默认是json。通用字段包括 timestamp,metrics,service,host,value。 不过有一些metrics会有额外的dimensions,比如dataSource,type等。
+ monitors  同一类别metrics分属的组。
+druid支持的monitors包括（由于公司架构不包含realtime等节点，这里仅列举我使用的monitors）：
+ io.druid.client.cache.CacheMonitor
+Historical和Broker两个节点的cache统计数据 com.metamx.metrics.SysMonitor
+系统资源使用量统计，这里记得需要下载一个jar包在lib目录 io.druid.server.metrics.HistoricalMetricsMonitor
+Historical节点数据统计 com.metamx.metrics.JvmMonitor
+JVM相关统计 io.druid.server.metrics.QueryCountStatsMonitor
+Broker,historical两个节点的请求数统计   emitter  发送metrics的工具。 默认是logging,即直接把监控数据写入日志中。后续脚本筛选出来发送给监控系统，扩展性太差。
+还有一种方式&amp;rsquo;http&#39;,把metrics通过POST的方式发送给server。 两者可以混合使用，不过日志量实在太大&amp;hellip;除此之外，还有一种选择，就是graphite emitter。
+优点当然是配置灵活，扩展性强。 不过graphite-emitter是社区版的一个插件，需要独立安装。
+ 这里需要重点注意的是:
+ 不同的metrics归属于不同的monitors,而不同的节点支持的monitors不同
+ 所以monitors配置尽量不要配置在common下，以免出现报错，甚至出现druid节点无法启动的现象。
+比如监控historical的统计数据，就需要开启io.druid.server.metrics.HistoricalMetricsMonitor，如果配置在common中，你会发现其他节点有各种诡异的报错，各种启动失败&amp;hellip;跳坑无数的血泪教训
+部署过程 安装graphite 关于graphite，只需要了解大概架构即可。其实有点类似ELK的模式，graphite也包括三种模块。
+ carbon: 接收数据。本身并不会采集数据。这一点官方文档特意强调了。 whisper: 时序数据库，存储carbon接收的数据。替代品包括influxdb等。 graphite-web: Django编写的一个web应用，把数据渲染成图形。替代品当然是美丽优雅的grafana了。  如上所述，其实graphite本身也有绘图功能，只不过效果相当简陋&amp;hellip;还好grafana有官方app可以直接使用graphite当作data source。</description>
+    </item>
+    
+  </channel>
+</rss>

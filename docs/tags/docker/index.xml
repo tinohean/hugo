@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>docker on 半岛无风</title>
+    <link>http://tinohean.top/tags/docker/</link>
+    <description>Recent content in docker on 半岛无风</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 02 Sep 2019 11:47:40 +0800</lastBuildDate><atom:link href="http://tinohean.top/tags/docker/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>CMD和ENTRYPOINT的配置比对详解</title>
+      <link>http://tinohean.top/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/</link>
+      <pubDate>Mon, 02 Sep 2019 11:47:40 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/</guid>
+      <description>CMD和ENTRYPOINT的配置比对详解 概述 Dockerfile的语法包括CMD和Entrypoint两种格式都可以配置用于容器内主进程的启动，两者的语义并不是很合适。新上手很容易搞不清楚两者之间的区别和关系，在不同的配置搭配下会产生怎样的运行效果也没有一个条理清晰的思路。
+同样的，k8s也有一套类似的配置语法：command和args。那么k8s的语法中两者又是怎样的搭配关系，它们跟docker语法又是怎样的映射关系呢？
+本文将进行详情分析。
+Docker中CMD和ENTRYPOINT的区别 两种运行模式 不管是CMD还是ENTRYPOINT配置，实际都是有两种模式：SHELL模式，EXEC模式。
+SHELL模式 命令是运行在命令解析器中的，比如linux的/bin/sh -c, windows的cmd /S /C。
+此时容器中的init进程（PID为1）是/bin/sh -c &amp;lt;process&amp;gt;，而不是容器的可执行程序，&amp;lt;process&amp;gt;只做为/bin/sh -c的子进程存在。
+Linux内核机制下，PID为1的进程（通常是init)有区别与其他进程的地方：
+ PID为1的进程死掉后，其他所有进程都会被KILL信号杀死（也就是强制退出） 当某父进程死掉后，PID为1的进程会自动继承为其子进程的父进程。 内核不会为PID为1的进程自动注册信号处理程序。PID为1的进程无法接受SIGTERM和SIGINT这类信号，只能SIGKILL强制退出。  因此，我们无法通过docker stop &amp;lt;container&amp;gt;进行优雅退出，因为kubernetes和docker只能发送SIGKILL信号给PID为1的进程，而此时PID为1的/bin/sh -c 没办法传递信号给&amp;lt;process&amp;gt;，只会通过SIGKILL强制退出。而强制退出带来的后果可能是写入中断，数据异常等。
+当然也有解决办法,比如共享进程的namespace，使用专门的init程序，比如tini,supervisor等。最方便的是使用exec命令从shell脚本启动进程，进程会继承PID 1：
+# shell模式下，通过exec配置可以接受signalENTRYPOINT exec cmd1 param1语法如下
+#单独用CMDCMD command param1 param2#单独用ENTRYPOINTENTROYPOINT command param1 param2#搭配使用只会执行ENTRYPOINT，因此CMD此时配置没什么意义以上的运行效果是一样的。
+EXEC模式 主进程就是&amp;lt;process&amp;gt;,所以不经过shell默认的环境变量解释替换过程。由此带来的问题是，类似cd ~和cd $HOME是无效的，因为此时是docker负责进行变量解析。
+这种模式下配置是被解析成json array的，因此必须全部使用双引号！
+语法如下
+# 单独用CMDCMD [&amp;#34;executable&amp;#34;, &amp;#34;param1&amp;#34;, &amp;#34;param2&amp;#34;]# 单独用ENTRYPOINTENTRYPOINT [&amp;#34;executable&amp;#34;, &amp;#34;param1&amp;#34;, &amp;#34;param2&amp;#34;]# 搭配使用1ENTRYPOINT [&amp;#34;executable&amp;#34;]CMD [&amp;#34;param1&amp;#34;, &amp;#34;param2&amp;#34;]# 搭配使用2ENTRYPOINT [&amp;#34;executable&amp;#34;, &amp;#34;param1&amp;#34;]CMD [&amp;#34;param2&amp;#34;]以上语法的运行效果也是一样的。
+配置 简单来说，CMD和ENTRYPOINT的作用都一样，都是用于容器的主进程启动。唯一不同的是，当配置了ENTRYPOINT时，CMD只作为ENTRYPOINT的命令参数存在。两者也可以单独存在。
+因此，配置其实有三种方式</description>
+    </item>
+    
+  </channel>
+</rss>

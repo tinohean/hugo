@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>prometheus on 半岛无风</title>
+    <link>http://tinohean.top/tags/prometheus/</link>
+    <description>Recent content in prometheus on 半岛无风</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 23 Dec 2020 18:04:34 +0800</lastBuildDate><atom:link href="http://tinohean.top/tags/prometheus/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Prometheus常用Exporter及告警规则</title>
+      <link>http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/</link>
+      <pubDate>Wed, 23 Dec 2020 18:04:34 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/</guid>
+      <description>Prometheus常用Exporter及硬件指标 Exporter node_exporter 链接：https://github.com/prometheus/node_exporter
+用途：用于类UNIX内核暴露的系统及硬件指标获取，比如CPU,MEM,DISK,FD等
+process_exporter 链接：https://github.com/ncabatoff/process-exporter
+用途：对于一些没有适配Prometheus的应用，可以抓取/proc下面的数据进行指标获取，比如线程数，上下文切换，IO,FD等
+blackbox_exporter 链接：https://github.com/prometheus/blackbox_exporter
+用途：黑盒探针，应用于一些web服务，API服务的可用性监控，可以通过TCP,HTTP,HTTPS等方式，常见指标包括response code, dns lookup time, duration time等
+mysqld_exporter 链接：https://github.com/prometheus/mysqld_exporter
+用途：暴露的mysql监控指标，比如连接数，各类CMD qps，buffer大小等
+redis_exporter 链接：https://github.com/oliver006/redis_exporter
+用途：暴露的redis监控指标，比如QPS，命中率，网络IO，key数量等
+druid_exporter 链接：https://github.com/wikimedia/operations-software-druid_exporter
+用途：暴露的druid.io相关监控指标，不是很全，可自己定制
+jmx_exporter 链接：https://github.com/prometheus/jmx_exporter
+用途：java类应用暴露的相关指标。比如kafka，hadoop生态
+另外，告警体系如果包括钉钉的话，推荐dingtalk_webhook
+Alerts Rules blackbox_exporter 常用的只有存活状态和状态码异常告警
+- alert:BlackboxProbeFailedexpr:probe_success == 0for:0mlabels:severity:criticalannotations:summary:Blackbox probe failed (instance {{ $labels.instance }})description:&amp;#34;Probe failed\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;- alert:BlackboxProbeHttpFailureexpr:probe_http_status_code &amp;lt;= 199 OR probe_http_status_code &amp;gt;= 400for:0mlabels:severity:criticalannotations:summary:Blackbox probe HTTP failure (instance {{ $labels.instance }})description:&amp;#34;HTTP status code is not 200-399\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;mysql_exporter 通常包括存活状态，慢查询等。</description>
+    </item>
+    
+  </channel>
+</rss>

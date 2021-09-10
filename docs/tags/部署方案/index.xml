@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>部署方案 on 半岛无风</title>
+    <link>http://tinohean.top/tags/%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</link>
+    <description>Recent content in 部署方案 on 半岛无风</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 02 Mar 2021 13:33:54 +0800</lastBuildDate><atom:link href="http://tinohean.top/tags/%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Paddle飞桨部署方案</title>
+      <link>http://tinohean.top/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</link>
+      <pubDate>Tue, 02 Mar 2021 13:33:54 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</guid>
+      <description>Paddle飞桨部署文档 Paddle是百度开源的一款深度学习平台
+基础环境 环境说明    项 版本     GPU NVIDA Tesla P4   操作系统 ubuntu 18.04 x86_64   硬件规格 4C20G 1Mbps + 100GB   Python 3.7.10   包管理 Anaconda 3   telsa驱动 NVIDIA-Linux-x86_64-418.152.00   cuda驱动 cuda_10.1.243_418.87.00_linux    环境预设  检查显卡  lspci | grep -i nvidia 2.确认gcc版本,没有则安装
+gcc --version 3.安装内核开发包
+sudo apt-get install linux-headers-$(uname -r) 4.禁掉Nouveau驱动
+echo &amp;#39;&amp;#39;&amp;#39;blacklist nouveau options nouveau modeset=0&amp;#39;&amp;#39;&amp;#39; | sudo tee /etc/modprobe.</description>
+    </item>
+    
+    <item>
+      <title>Kubeadm部署kubernetes集群</title>
+      <link>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/</link>
+      <pubDate>Fri, 14 Feb 2020 22:52:33 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/</guid>
+      <description>Kubeadm部署kubernetes集群 前期准备 节点规划    主机名 角色 ip 配置 系统版本     k8s-master-01 master 172.21.0.3 4C8G Ubuntu 16.04.1 LTS   k8s-master-02 master 172.21.0.4 4C8G Ubuntu 16.04.1 LTS   k8s-master-03 master 172.21.0.5 4C8G Ubuntu 16.04.1 LTS   k8s-node-01 node 172.21.0.6 4C8G Ubuntu 16.04.1 LTS   k8s-node-02 node 172.21.0.7 4C8G Ubuntu 16.04.1 LTS   k8s-apiserver LB apiserver.k8s.local nginx实现的localproxy     环境配置 所有服务器都需要进行基本环境配置，比如关闭防火墙，关闭swap等</description>
+    </item>
+    
+  </channel>
+</rss>

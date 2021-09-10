@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>监控 on 半岛无风</title>
+    <link>http://tinohean.top/tags/%E7%9B%91%E6%8E%A7/</link>
+    <description>Recent content in 监控 on 半岛无风</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 23 Dec 2020 18:04:34 +0800</lastBuildDate><atom:link href="http://tinohean.top/tags/%E7%9B%91%E6%8E%A7/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Prometheus常用Exporter及告警规则</title>
+      <link>http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/</link>
+      <pubDate>Wed, 23 Dec 2020 18:04:34 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/</guid>
+      <description>Prometheus常用Exporter及硬件指标 Exporter node_exporter 链接：https://github.com/prometheus/node_exporter
+用途：用于类UNIX内核暴露的系统及硬件指标获取，比如CPU,MEM,DISK,FD等
+process_exporter 链接：https://github.com/ncabatoff/process-exporter
+用途：对于一些没有适配Prometheus的应用，可以抓取/proc下面的数据进行指标获取，比如线程数，上下文切换，IO,FD等
+blackbox_exporter 链接：https://github.com/prometheus/blackbox_exporter
+用途：黑盒探针，应用于一些web服务，API服务的可用性监控，可以通过TCP,HTTP,HTTPS等方式，常见指标包括response code, dns lookup time, duration time等
+mysqld_exporter 链接：https://github.com/prometheus/mysqld_exporter
+用途：暴露的mysql监控指标，比如连接数，各类CMD qps，buffer大小等
+redis_exporter 链接：https://github.com/oliver006/redis_exporter
+用途：暴露的redis监控指标，比如QPS，命中率，网络IO，key数量等
+druid_exporter 链接：https://github.com/wikimedia/operations-software-druid_exporter
+用途：暴露的druid.io相关监控指标，不是很全，可自己定制
+jmx_exporter 链接：https://github.com/prometheus/jmx_exporter
+用途：java类应用暴露的相关指标。比如kafka，hadoop生态
+另外，告警体系如果包括钉钉的话，推荐dingtalk_webhook
+Alerts Rules blackbox_exporter 常用的只有存活状态和状态码异常告警
+- alert:BlackboxProbeFailedexpr:probe_success == 0for:0mlabels:severity:criticalannotations:summary:Blackbox probe failed (instance {{ $labels.instance }})description:&amp;#34;Probe failed\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;- alert:BlackboxProbeHttpFailureexpr:probe_http_status_code &amp;lt;= 199 OR probe_http_status_code &amp;gt;= 400for:0mlabels:severity:criticalannotations:summary:Blackbox probe HTTP failure (instance {{ $labels.instance }})description:&amp;#34;HTTP status code is not 200-399\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;mysql_exporter 通常包括存活状态，慢查询等。</description>
+    </item>
+    
+    <item>
+      <title>监控方案-druid篇</title>
+      <link>http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/</link>
+      <pubDate>Mon, 16 Oct 2017 22:43:41 +0000</pubDate>
+      
+      <guid>http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/</guid>
+      <description>监控系统-druid.io 公司的业务日志是通过syslog-ng喂给kafka,提供给spark消费并进行数据清洗，然后把数据导入到druid进行实时聚合查询。
+监控维度覆盖到了druid.io的性能指标上，而针对druid.io的监控能找到的文档不多,官方文档略显简陋而且分散,方案落地的时候碰到了很多坑。
+趁记忆还新鲜整理出这篇文章。
+部署及配置 方案说明 druid配置graphite-emitter,把相关metrics发送给graphite,然后由grafana做前端展示及告警
+版本说明 系统版本：Ubuntu 14.04
+druid版本：imply-2.5.5 druid-0.12.0
+graphite版本: latest
+druid配置 关于监控，druid有几个相关术语简单解释下。
+ metrics monitors emitter  metrics  druid提供的用于监控的各类指标，包括各节点的系统资源使用统计，请求相关统计等。
+格式默认是json。通用字段包括 timestamp,metrics,service,host,value。 不过有一些metrics会有额外的dimensions,比如dataSource,type等。
+ monitors  同一类别metrics分属的组。
+druid支持的monitors包括（由于公司架构不包含realtime等节点，这里仅列举我使用的monitors）：
+ io.druid.client.cache.CacheMonitor
+Historical和Broker两个节点的cache统计数据 com.metamx.metrics.SysMonitor
+系统资源使用量统计，这里记得需要下载一个jar包在lib目录 io.druid.server.metrics.HistoricalMetricsMonitor
+Historical节点数据统计 com.metamx.metrics.JvmMonitor
+JVM相关统计 io.druid.server.metrics.QueryCountStatsMonitor
+Broker,historical两个节点的请求数统计   emitter  发送metrics的工具。 默认是logging,即直接把监控数据写入日志中。后续脚本筛选出来发送给监控系统，扩展性太差。
+还有一种方式&amp;rsquo;http&#39;,把metrics通过POST的方式发送给server。 两者可以混合使用，不过日志量实在太大&amp;hellip;除此之外，还有一种选择，就是graphite emitter。
+优点当然是配置灵活，扩展性强。 不过graphite-emitter是社区版的一个插件，需要独立安装。
+ 这里需要重点注意的是:
+ 不同的metrics归属于不同的monitors,而不同的节点支持的monitors不同
+ 所以monitors配置尽量不要配置在common下，以免出现报错，甚至出现druid节点无法启动的现象。
+比如监控historical的统计数据，就需要开启io.druid.server.metrics.HistoricalMetricsMonitor，如果配置在common中，你会发现其他节点有各种诡异的报错，各种启动失败&amp;hellip;跳坑无数的血泪教训
+部署过程 安装graphite 关于graphite，只需要了解大概架构即可。其实有点类似ELK的模式，graphite也包括三种模块。
+ carbon: 接收数据。本身并不会采集数据。这一点官方文档特意强调了。 whisper: 时序数据库，存储carbon接收的数据。替代品包括influxdb等。 graphite-web: Django编写的一个web应用，把数据渲染成图形。替代品当然是美丽优雅的grafana了。  如上所述，其实graphite本身也有绘图功能，只不过效果相当简陋&amp;hellip;还好grafana有官方app可以直接使用graphite当作data source。</description>
+    </item>
+    
+    <item>
+      <title>监控方案-kafka篇</title>
+      <link>http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/</link>
+      <pubDate>Tue, 11 Jul 2017 22:45:20 +0000</pubDate>
+      
+      <guid>http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/</guid>
+      <description>kafka监控篇 方案调研 针对kakfa的监控，简单调研了下，业界比较流行的几款解决方案:
+ KafkaOffsetMonitor Kakfa Manager kakfa Monitor Kafka Eagle  对于当前的zabbix+grafana监控框架来说，都略显笨重。
+而kafka官方文档关于monitor的说明：可以通过内嵌的JMX的方式获取kafka各类metrics,无需安装任何额外的组件。同时zabbix可以通过zabbix-java-gateway的组件实现监控JMX。
+考虑再三，决定了技术方案：
+ 开启kafka的JMX zabbix server通过zabbix-java-gateway访问JMX获取各metrics grafana实现监控数据可视化  优点:
+当然是跟现有的监控体系结合在一起，不用再额外搭建一套新的监控系统了。
+缺点:
+经过一系列跳坑，发现kafka的java跟zabbix-java-gateway以及zabbix-server跟zabbix-java-gateway之间的版本兼容性不太好，实测不向下兼容。鉴于此，kakfa与zabbix-server的系统版本最好一致。
+针对这个缺点，可以通过JMX的command line工具,脚本化获取需要监控的metrics,然后定时任务发送给zabbix,无需安装zabbix-java-gateway。
+此类工具很多，最简单的是一个jar包。
+配置部署 zabbix server配置了java-gateway(192.168.1.10)后会pre-fork与配置数量相匹配的java-poller进程，java-poller会请求JavaGateway，而JavaGateway会调用JMX management API，获取已对其开放权限的JMX(192.169.1.11)的各类metrics值
+zabbix-server 新建host,监控接口选择JMX，默认端口是12345。
+一个典型的JMX item包含两个方面：
+jmx[object_name,attribute_name] object_name就是选择的kafka的metrics,然后后面就是该metrics对应的attributes 监控的各类metrics。此处最好做一个模板,方便后续的导入
+zabbix-server.conf相关配置
+#javaGateway的IP JavaGateway=192.168.1.10 #默认端口10052 JavaGatewayPort=10052 #javaPoller的进程数量 StartJavaPollers=5 zabbix-java-gateway sudo apt-get install zabbix-java-gateway 默认配置即可
+kafka JMX JMX的调用需要在启动脚本加入相关参数配置，指定端口及放权IP,这里仅列举下不需要ssl认证的简单配置
+local:
+-Dcom.sun.management.jmxremote \ -Dcom.sun.management.jmxremote.port=12345 \ -Dcom.sun.management.jmxremote.authenticate=false \ -Dcom.sun.management.jmxremote.ssl=false \ remote:
+-Dcom.sun.management.jmxremote \ -Dcom.sun.management.jmxremote.port=12345 \ -Dcom.</description>
+    </item>
+    
+  </channel>
+</rss>

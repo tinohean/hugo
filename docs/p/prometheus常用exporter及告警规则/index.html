@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='Prometheus常用Exporter及硬件指标 Exporter node_exporter 链接：https://github.com/prometheus/node_exporter
+用途：用于类UNIX内核暴露的系统及硬件指标获取，比如CPU,MEM,DISK,FD等
+process_exporter 链接：https://github.com/ncabatoff/process-exporter
+用途：对于一些没有适配Prometheus的应用，可以抓取/proc下面的数据进行指标获取，比如线程数，上下文切换，IO,FD等
+blackbox_exporter 链接：https://github.com/prometheus/blackbox_exporter
+用途：黑盒探针，应用于一些web服务，API服务的可用性监控，可以通过TCP,HTTP,HTTPS等方式，常见指标包括response code, dns lookup time, duration time等
+mysqld_exporter 链接：https://github.com/prometheus/mysqld_exporter
+用途：暴露的mysql监控指标，比如连接数，各类CMD qps，buffer大小等
+redis_exporter 链接：https://github.com/oliver006/redis_exporter
+用途：暴露的redis监控指标，比如QPS，命中率，网络IO，key数量等
+druid_exporter 链接：https://github.com/wikimedia/operations-software-druid_exporter
+用途：暴露的druid.io相关监控指标，不是很全，可自己定制
+jmx_exporter 链接：https://github.com/prometheus/jmx_exporter
+用途：java类应用暴露的相关指标。比如kafka，hadoop生态
+另外，告警体系如果包括钉钉的话，推荐dingtalk_webhook
+Alerts Rules blackbox_exporter 常用的只有存活状态和状态码异常告警
+- alert:BlackboxProbeFailedexpr:probe_success == 0for:0mlabels:severity:criticalannotations:summary:Blackbox probe failed (instance {{ $labels.instance }})description:&amp;#34;Probe failed\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;- alert:BlackboxProbeHttpFailureexpr:probe_http_status_code &amp;lt;= 199 OR probe_http_status_code &amp;gt;= 400for:0mlabels:severity:criticalannotations:summary:Blackbox probe HTTP failure (instance {{ $labels.instance }})description:&amp;#34;HTTP status code is not 200-399\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;mysql_exporter 通常包括存活状态，慢查询等。'><title>Prometheus常用Exporter及告警规则</title>
+
+<link rel='canonical' href='http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/'>
+
+<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='Prometheus常用Exporter及告警规则'>
+<meta property='og:description' content='Prometheus常用Exporter及硬件指标 Exporter node_exporter 链接：https://github.com/prometheus/node_exporter
+用途：用于类UNIX内核暴露的系统及硬件指标获取，比如CPU,MEM,DISK,FD等
+process_exporter 链接：https://github.com/ncabatoff/process-exporter
+用途：对于一些没有适配Prometheus的应用，可以抓取/proc下面的数据进行指标获取，比如线程数，上下文切换，IO,FD等
+blackbox_exporter 链接：https://github.com/prometheus/blackbox_exporter
+用途：黑盒探针，应用于一些web服务，API服务的可用性监控，可以通过TCP,HTTP,HTTPS等方式，常见指标包括response code, dns lookup time, duration time等
+mysqld_exporter 链接：https://github.com/prometheus/mysqld_exporter
+用途：暴露的mysql监控指标，比如连接数，各类CMD qps，buffer大小等
+redis_exporter 链接：https://github.com/oliver006/redis_exporter
+用途：暴露的redis监控指标，比如QPS，命中率，网络IO，key数量等
+druid_exporter 链接：https://github.com/wikimedia/operations-software-druid_exporter
+用途：暴露的druid.io相关监控指标，不是很全，可自己定制
+jmx_exporter 链接：https://github.com/prometheus/jmx_exporter
+用途：java类应用暴露的相关指标。比如kafka，hadoop生态
+另外，告警体系如果包括钉钉的话，推荐dingtalk_webhook
+Alerts Rules blackbox_exporter 常用的只有存活状态和状态码异常告警
+- alert:BlackboxProbeFailedexpr:probe_success == 0for:0mlabels:severity:criticalannotations:summary:Blackbox probe failed (instance {{ $labels.instance }})description:&amp;#34;Probe failed\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;- alert:BlackboxProbeHttpFailureexpr:probe_http_status_code &amp;lt;= 199 OR probe_http_status_code &amp;gt;= 400for:0mlabels:severity:criticalannotations:summary:Blackbox probe HTTP failure (instance {{ $labels.instance }})description:&amp;#34;HTTP status code is not 200-399\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;mysql_exporter 通常包括存活状态，慢查询等。'>
+<meta property='og:url' content='http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='prometheus' /><meta property='article:tag' content='监控' /><meta property='article:published_time' content='2020-12-23T18:04:34&#43;08:00'/><meta property='article:modified_time' content='2020-12-23T18:04:34&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/prometheus.jpg' />
+<meta name="twitter:title" content="Prometheus常用Exporter及告警规则">
+<meta name="twitter:description" content="Prometheus常用Exporter及硬件指标 Exporter node_exporter 链接：https://github.com/prometheus/node_exporter
+用途：用于类UNIX内核暴露的系统及硬件指标获取，比如CPU,MEM,DISK,FD等
+process_exporter 链接：https://github.com/ncabatoff/process-exporter
+用途：对于一些没有适配Prometheus的应用，可以抓取/proc下面的数据进行指标获取，比如线程数，上下文切换，IO,FD等
+blackbox_exporter 链接：https://github.com/prometheus/blackbox_exporter
+用途：黑盒探针，应用于一些web服务，API服务的可用性监控，可以通过TCP,HTTP,HTTPS等方式，常见指标包括response code, dns lookup time, duration time等
+mysqld_exporter 链接：https://github.com/prometheus/mysqld_exporter
+用途：暴露的mysql监控指标，比如连接数，各类CMD qps，buffer大小等
+redis_exporter 链接：https://github.com/oliver006/redis_exporter
+用途：暴露的redis监控指标，比如QPS，命中率，网络IO，key数量等
+druid_exporter 链接：https://github.com/wikimedia/operations-software-druid_exporter
+用途：暴露的druid.io相关监控指标，不是很全，可自己定制
+jmx_exporter 链接：https://github.com/prometheus/jmx_exporter
+用途：java类应用暴露的相关指标。比如kafka，hadoop生态
+另外，告警体系如果包括钉钉的话，推荐dingtalk_webhook
+Alerts Rules blackbox_exporter 常用的只有存活状态和状态码异常告警
+- alert:BlackboxProbeFailedexpr:probe_success == 0for:0mlabels:severity:criticalannotations:summary:Blackbox probe failed (instance {{ $labels.instance }})description:&amp;#34;Probe failed\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;- alert:BlackboxProbeHttpFailureexpr:probe_http_status_code &amp;lt;= 199 OR probe_http_status_code &amp;gt;= 400for:0mlabels:severity:criticalannotations:summary:Blackbox probe HTTP failure (instance {{ $labels.instance }})description:&amp;#34;HTTP status code is not 200-399\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;mysql_exporter 通常包括存活状态，慢查询等。"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/prometheus.jpg' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="http://tinohean.top" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>Back</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/">
+                <img src="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/prometheus_hu29c20fb19d2aaa59a3207076dda60f90_67350_800x0_resize_q75_box.jpg"
+                        srcset="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/prometheus_hu29c20fb19d2aaa59a3207076dda60f90_67350_800x0_resize_q75_box.jpg 800w, /p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/prometheus_hu29c20fb19d2aaa59a3207076dda60f90_67350_1600x0_resize_q75_box.jpg 1600w"
+                        width="800" 
+                        height="292" 
+                        loading="lazy"
+                        alt="Featured image of post Prometheus常用Exporter及告警规则" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/">Prometheus常用Exporter及告警规则</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Dec 23, 2020</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    3 min read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h1 id="prometheus常用exporter及硬件指标">Prometheus常用Exporter及硬件指标</h1>
+<h2 id="exporter">Exporter</h2>
+<h3 id="node_exporter">node_exporter</h3>
+<p>链接：https://github.com/prometheus/node_exporter<br>
+用途：用于类UNIX内核暴露的系统及硬件指标获取，比如CPU,MEM,DISK,FD等</p>
+<h3 id="process_exporter">process_exporter</h3>
+<p>链接：https://github.com/ncabatoff/process-exporter<br>
+用途：对于一些没有适配Prometheus的应用，可以抓取/proc下面的数据进行指标获取，比如线程数，上下文切换，IO,FD等</p>
+<h3 id="blackbox_exporter">blackbox_exporter</h3>
+<p>链接：https://github.com/prometheus/blackbox_exporter<br>
+用途：黑盒探针，应用于一些web服务，API服务的可用性监控，可以通过TCP,HTTP,HTTPS等方式，常见指标包括response code, dns lookup time, duration time等</p>
+<h3 id="mysqld_exporter">mysqld_exporter</h3>
+<p>链接：https://github.com/prometheus/mysqld_exporter<br>
+用途：暴露的mysql监控指标，比如连接数，各类CMD qps，buffer大小等</p>
+<h3 id="redis_exporter">redis_exporter</h3>
+<p>链接：https://github.com/oliver006/redis_exporter<br>
+用途：暴露的redis监控指标，比如QPS，命中率，网络IO，key数量等</p>
+<h3 id="druid_exporter">druid_exporter</h3>
+<p>链接：https://github.com/wikimedia/operations-software-druid_exporter<br>
+用途：暴露的druid.io相关监控指标，不是很全，可自己定制</p>
+<h3 id="jmx_exporter">jmx_exporter</h3>
+<p>链接：https://github.com/prometheus/jmx_exporter<br>
+用途：java类应用暴露的相关指标。比如kafka，hadoop生态</p>
+<p>另外，告警体系如果包括钉钉的话，推荐<a class="link" href="https://github.com/timonwong/prometheus-webhook-dingtalk"  target="_blank" rel="noopener"
+    >dingtalk_webhook</a></p>
+<h2 id="alerts-rules">Alerts Rules</h2>
+<h3 id="blackbox_exporter-1">blackbox_exporter</h3>
+<p>常用的只有存活状态和状态码异常告警</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">BlackboxProbeFailed</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">probe_success == 0</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">0m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">critical</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="l">Blackbox probe failed (instance {{ $labels.instance }})</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Probe failed\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}&#34;</span><span class="w">
+</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">BlackboxProbeHttpFailure</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">probe_http_status_code &lt;= 199 OR probe_http_status_code &gt;= 400</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">0m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">critical</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="l">Blackbox probe HTTP failure (instance {{ $labels.instance }})</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;HTTP status code is not 200-399\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}&#34;</span><span class="w">
+</span></code></pre></div><h3 id="mysql_exporter">mysql_exporter</h3>
+<p>通常包括存活状态，慢查询等。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">MysqlDown</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">mysql_up == 0</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">0m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">critical</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="l">MySQL down (instance {{ $labels.instance }})</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;MySQL instance is down on {{ $labels.instance }}\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}&#34;</span><span class="w">
+</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">MysqlSlowQueries</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">increase(mysql_global_status_slow_queries[1m]) &gt; 0</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">2m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">warning</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="l">MySQL slow queries (instance {{ $labels.instance }})</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;MySQL server mysql has some new slow query.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}&#34;</span><span class="w">
+</span><span class="w">
+</span></code></pre></div><h3 id="process_exporter-1">process_exporter</h3>
+<p>通常用于进程存活检查</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">ProcessDown</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">namedprocess_namegroup_num_procs == 0</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">1m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">high</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Instance {{ $labels.instance }} process is down.&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Instance {{ $labels.instance }}: {{ $labels.groupname }} is down&#34;</span><span class="w">
+</span></code></pre></div><h3 id="jmx_exporter-1">jmx_exporter</h3>
+<p>这里我只使用了kafka监控</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml">- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">KafkaStatsAlert</span><span class="w">
+</span><span class="w">  </span><span class="nt">rules</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">KafkaOfflineAlert</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">kafka_controller_kafkacontroller_offlinepartitionscount &gt; 0</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">5m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">average</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Instance {{ $labels.instance }} have offline partitions.&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Offline partitions &gt; 0 (current value: {{ $value }})&#34;</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">KafkaUnderreplicatedAlert</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">sum(kafka_cluster_partition_underreplicated) by (instance) &gt; 0</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">5m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">average</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Instance {{ $labels.instance }} have partitions underreplicated.&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Underreplicated partitions &gt; 0 (current value: {{ $value }})&#34;</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">KafkaNocontrollerAlert</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">sum (kafka_controller_kafkacontroller_activecontrollercount ) == 0</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">5m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">average</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;No active controller.&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Current active controller = 0&#34;</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">KafkaGCtimeAlert</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">sum without(gc)(rate(jvm_gc_collection_seconds_sum{job=&#34;kafka&#34;}[5m])) &gt; 0.8</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">5m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">high</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Kafka spent too much time in GC&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;GCtime spend &gt; 8% (current value: {{ $value }})&#34;</span><span class="w">
+</span><span class="w">
+</span></code></pre></div><h3 id="node_exporter-1">node_exporter</h3>
+<p>以下是筛选后常用的node_exporter获取的硬件指标告警触发语句，包括各种硬件容量预警。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">groups</span><span class="p">:</span><span class="w">
+</span><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">hostStatsAlert</span><span class="w">
+</span><span class="w">  </span><span class="nt">rules</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">hostCpuUsageAlert</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">sum by(instance) (avg without(cpu) (irate(node_cpu_seconds_total{mode!=&#34;idle&#34;,instance!~&#34;dev.*&#34;}[5m]))) &gt; 0.9</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">5m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">high</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Instance {{ $labels.instance }} CPU usage high&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;CPU usage above 90% (current value: {{ $value }})&#34;</span><span class="w">
+</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">hostMemUsageAlert</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">(node_memory_MemTotal_bytes - node_memory_MemFree_bytes - node_memory_Buffers_bytes - node_memory_Cached_bytes) / node_memory_MemTotal_bytes{cluster!=&#34;develop&#34;} &gt; 0.9</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">10m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">average</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Instance {{ $labels.instance }} MEM usage high&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;MEM usage above 90% (current value: {{ $value }})&#34;</span><span class="w">
+</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">hostDiskUsageAlert</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">(node_filesystem_size_bytes - node_filesystem_free_bytes ) / node_filesystem_size_bytes {fstype=~&#34;ext[2-5]*&#34;} &gt; 0.8</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">5m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">high</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Instance {{ $labels.instance }} Disk usage high&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Disk usage above 85% (current value: {{ $value }})&#34;</span><span class="w">
+</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">hostDiskInodeUsageAlert</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">(node_filesystem_files - node_filesystem_files_free)/node_filesystem_files {fstype=~&#34;ext[2-5]*&#34;} &gt; 0.8</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">high</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Instance {{ $labels.instance }} Disk Inode usage high&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;{{ $labels.instance }} Disk Inode usage above 85% (current value: {{ $value }})&#34;</span><span class="w">
+</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">hostCpuLoadAlert</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">node_load15 / (count without (cpu, mode) (node_cpu_seconds_total{mode=&#34;system&#34;,cluster!=&#34;develop&#34;})) &gt; 2</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">10m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">average</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;instance {{ $labels.instance }}) CPU load (15m) high&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;CPU load (15m) is high\n  VALUE = {{ $value }}&#34;</span><span class="w">
+</span><span class="w">
+</span><span class="w">  </span><span class="c"># mute during 0:00-07:00</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">hostDiskIOAlert</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">sum by(instance) (avg without(cpu) (irate(node_cpu_seconds_total{mode=~&#34;iowait&#34;,instance!~&#34;dev.*&#34;}[5m]))) &gt; 0.2 and ON() hour() &gt; 0 &lt; 16</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">10m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">average</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;instance {{ $labels.instance }})Disk I/O is overloaded&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;{{ $labels.instance }} Disk I/O is overloaded for more than 5 minutes (current value: {{ $value }})&#34;</span><span class="w">
+</span></code></pre></div><h3 id="redis_exporter-1">redis_exporter</h3>
+<p>结合自定义参数获取的指标</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml">- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">RedisAlert</span><span class="w">
+</span><span class="w">  </span><span class="nt">rules</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">BlockedClient</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">redis_blocked_clients &gt; 0 </span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">1m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">high</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis connection have blocked clients.&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis connections have blocked clients: {{ $value }}.&#34;</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">RedisClusterSlotsFail</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">redis_cluster_slots_fail &gt; 0 </span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">1m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">high</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis cluster have failed slots.&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis cluster have failed slots: {{ $value }}.&#34;</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">RedisClusterStorage</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">redis_cluster_stats{type=&#34;StorageUs&#34;} &gt; 85</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">high</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis cluster storage used over 85%.&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis cluster {{ $labels.ins}} storage used over 85%: {{ $value }}.&#34;</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">RedisClusterStorageLack</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">redis_cluster_stats{type=&#34;StorageUs&#34;} &gt; 90</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">disaster</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis cluster storage used over 90%.&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis cluster {{ $labels.ins}} storage used over 90%: {{ $value }}.&#34;</span><span class="w">
+</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">RedisClusterMaxConnection</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">redis_cluster_stats{type=&#34;Connections&#34;} &gt; 5000</span><span class="w">
+</span><span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l">2m</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">disaster</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis cluster got too many connections.&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis cluster {{ $labels.ins}} got too many connections : {{ $value }}.&#34;</span><span class="w">
+</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l">RedisInstanceDown</span><span class="w">
+</span><span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l">redis_up{instance!~&#39;ops-.*&#39;} == 0</span><span class="w">
+</span><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l">disaster</span><span class="w">
+</span><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis instance is down&#34;</span><span class="w">
+</span><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;redis instance {{$labels.alias}} is down&#34;</span><span class="w">
+</span></code></pre></div><h2 id="参考文档">参考文档</h2>
+<ol>
+<li><a class="link" href="https://prometheus.io/docs/instrumenting/exporters/"  target="_blank" rel="noopener"
+    >https://prometheus.io/docs/instrumenting/exporters/</a></li>
+<li><a class="link" href="https://awesome-prometheus-alerts.grep.to/"  target="_blank" rel="noopener"
+    >https://awesome-prometheus-alerts.grep.to/</a></li>
+</ol>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/prometheus/">prometheus</a>
+        
+            <a href="/tags/%E7%9B%91%E6%8E%A7/">监控</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/druid.3b5517783c33e2846a518ccc6b30887b_hu29d20a37b17955b30e24040a85cde0bd_50267_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-O1UXeDwz4oRqUYzMazCIew==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">监控方案-druid篇</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/grafana.3b7da84effaa3ef57cd738d7d45d03b0_hud6a20f3436e4696f01e55623167f1a17_283099_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-O32oTv&#43;qPvV81zjX1F0DsA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">监控方案-kafka篇</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%B5%85%E8%B0%88chatops/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%B5%85%E8%B0%88chatops/chatops.047fdca1683487486942824c5121858c_hu2af93606f657e048f3b8c35cecf8603a_39849_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-BH/coWg0h0hpQoJMUSGFjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">浅谈ChatOps</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/paddle.f9980b85e5d47359ccd6cefec98ae32a_hu5438825b9b6d1014226d20d231e650c2_191045_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-&#43;ZgLheXUc1nM1s7&#43;yYrjKg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Paddle飞桨部署方案</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/soul/">
+        
+        
+            <div class="article-image">
+                <img src="/p/soul/soul.1ec3d9ceed2b95e92d1a2f57a754173e_hua5b7a4101002ac3de8aa87e6c8d8ffa6_107809_250x150_fill_q75_box_smart1.JPG" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-HsPZzu0rlektGi9Xp1QXPg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Soul</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+     
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2021 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">Table of contents</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#exporter">Exporter</a>
+      <ol>
+        <li><a href="#node_exporter">node_exporter</a></li>
+        <li><a href="#process_exporter">process_exporter</a></li>
+        <li><a href="#blackbox_exporter">blackbox_exporter</a></li>
+        <li><a href="#mysqld_exporter">mysqld_exporter</a></li>
+        <li><a href="#redis_exporter">redis_exporter</a></li>
+        <li><a href="#druid_exporter">druid_exporter</a></li>
+        <li><a href="#jmx_exporter">jmx_exporter</a></li>
+      </ol>
+    </li>
+    <li><a href="#alerts-rules">Alerts Rules</a>
+      <ol>
+        <li><a href="#blackbox_exporter-1">blackbox_exporter</a></li>
+        <li><a href="#mysql_exporter">mysql_exporter</a></li>
+        <li><a href="#process_exporter-1">process_exporter</a></li>
+        <li><a href="#jmx_exporter-1">jmx_exporter</a></li>
+        <li><a href="#node_exporter-1">node_exporter</a></li>
+        <li><a href="#redis_exporter-1">redis_exporter</a></li>
+      </ol>
+    </li>
+    <li><a href="#参考文档">参考文档</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='浅谈ChatOps 背景 本文源自我在技术团队的一次分享。 八月的时候我调研了下ChatOps概念，并通过钉钉机器人成功落地。
+至于当时为什么要做ChatOps呢，主要是因为实力不足（不懂算法，监控数据量有限），无法推进AIOps进行运维平台的迭代升级。而ChatOps作为一个新兴的概念（其实也不新了），也属于智能运维的范畴，在国内还没有什么很红的应用方案。
+其次是当时出现了一些日常操作的痛点，比如某次研发小伙伴在午饭前上了一次线，午饭期间出现重大故障，只能捧着饭碗从食堂火速跑回工位回滚处理，再比如临睡前懒得去登陆监控页面的我想看下当前负载较大的服务器状况&amp;hellip;
+在这样的契机下，经过一系列脑洞挖掘出一些潜在的用途后，一款python&#43;dingtalk的简单原型就出来了。部署简单，实用，可定制性强。
+概念 理解什么是ChatOps，只需要了解两个要点
+ 会话驱动 机器执行  也就是说，这个系统是通过对话式的聊天进行驱动的，而背后真正的执行者从人变成了机器人。
+概念最早源于Github的Hubot项目，开发者可以通过在pull request页面@机器人进行一些常规的分支合并等操作。
+比如当下火热的kubernetes代码库， 一个叫k8s-ci-robot的机器人频频出现在开发者的视线。当然它在ChatOps的实践上已经走得很成熟了，可以胜任的一些常规操作包括：提醒代码库管理者review期限, 自动测试，自动加标签，自动格式检查，自动关闭长时间的issue,随机指定管理人员进行代码review等等。
+这在很大程度上减轻了项目的管理工作负担，从简化的流程上间接提高了效率。
+优点 了解了什么是ChatOps后，我们可以总结下所谓的ChatOps能给我们带来什么？
+概括下来，ChatOps大概有以下几个受益：
+ 公开透明 上下文共享 移动高效  第一个，显而易见的，所有操作都是在聊天平台中公开的，有聊天记录可以查询，所有人都能看到彼此的操作记录，由此带来的第二个好处，就是上下文共享，一些繁琐复杂的操作流程，可以通过查看记录了解进度，协调，这样工作承接会更加有序。
+还有一个很明显的好处就是移动高效，因为我们的操作端从电脑转移到了手机，pad等移动设备，也不需要输入冗长的命令，做很多次点击等操作，实际上会提高处理效率。
+使用场景 脑洞一番后，总结了一些可使用的场景。
+第一个，运维巡检，比如哪个夜黑风高的晚上，临睡前的我预感不妙，要看下现在硬件容量有可能爆满的服务器详情，这样可以提前处理下。
+另一个，就是告警查询，有时候告警泛滥，我如果不登陆监控页面的话，不清楚哪些告警已经处理了，哪些没有处理。这时候我可以@机器人来一个当前告警清单。
+第三个呢，就是紧急回滚。如同前文所说，比如哪天我们上好线，初期观察没啥问题，出去吃饭了，结果吃饭过程中出现大量告警，直接@机器人回滚操作，简单又高效。
+第四个呢，就是我们经常需要做的，硬件信息查询，比如服务器外网IP，硬件配置，比登陆CMDB查询方便多了。
+&amp;hellip;
+架构  ChatOps系统架构  一个完整的ChatOps落地包括这四个层面的架构，有人（不限于运维，研发，甚至可以是运营），有聊天平台（比如国内的钉钉，微信），有机器人（比如github的hubot），有支持机器人操作的基础设施，包括服务器，脚本，后端服务等等。
+后端服务作为ChatOps的主要开发对象，暂时没有很契合的开源方案，需要开发者自己开发相关逻辑。
+等级演变 下面分析下ChatOps的演变路线。  before ChatOps 
+在ChatOps之前，运维是直接对接监控系统的，没有聊天软件来进行信息同步。同时，告警处理和事件处理等运维操作都是基于Ad-hoc命令，通过shell客户端进行的。  lv1 
+到了Level1后呢，我们会针对告警创建不同的讨论群，比如某应用触发告警了，运维在群里通知开发进行处理。在这个层级，事件的发送者还是人。  lv2a 
+Level 2A后，我们已经可以把这些告警信息、事件详情等进行分类通知，比如硬件类告警专门发到一个群，应用类告警发到另一个群。这时候，事件的发送者变成了监控系统，然后还支持事件恢复通知。  lv2b 
+Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查询CMDB获取硬件信息，工单系统啊，监控指标啊等信息。此时信息更加丰富了。  lv3 
+到了level3后就是全自动化的交互。比如可以更新工单，事件状态，发出指令并查看执行结果。最重要的是我们能通过聊天工具跟监控系统等内部系统进行交互。  lv4'><title>浅谈ChatOps</title>
+
+<link rel='canonical' href='http://tinohean.top/p/%E6%B5%85%E8%B0%88chatops/'>
+
+<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='浅谈ChatOps'>
+<meta property='og:description' content='浅谈ChatOps 背景 本文源自我在技术团队的一次分享。 八月的时候我调研了下ChatOps概念，并通过钉钉机器人成功落地。
+至于当时为什么要做ChatOps呢，主要是因为实力不足（不懂算法，监控数据量有限），无法推进AIOps进行运维平台的迭代升级。而ChatOps作为一个新兴的概念（其实也不新了），也属于智能运维的范畴，在国内还没有什么很红的应用方案。
+其次是当时出现了一些日常操作的痛点，比如某次研发小伙伴在午饭前上了一次线，午饭期间出现重大故障，只能捧着饭碗从食堂火速跑回工位回滚处理，再比如临睡前懒得去登陆监控页面的我想看下当前负载较大的服务器状况&amp;hellip;
+在这样的契机下，经过一系列脑洞挖掘出一些潜在的用途后，一款python&#43;dingtalk的简单原型就出来了。部署简单，实用，可定制性强。
+概念 理解什么是ChatOps，只需要了解两个要点
+ 会话驱动 机器执行  也就是说，这个系统是通过对话式的聊天进行驱动的，而背后真正的执行者从人变成了机器人。
+概念最早源于Github的Hubot项目，开发者可以通过在pull request页面@机器人进行一些常规的分支合并等操作。
+比如当下火热的kubernetes代码库， 一个叫k8s-ci-robot的机器人频频出现在开发者的视线。当然它在ChatOps的实践上已经走得很成熟了，可以胜任的一些常规操作包括：提醒代码库管理者review期限, 自动测试，自动加标签，自动格式检查，自动关闭长时间的issue,随机指定管理人员进行代码review等等。
+这在很大程度上减轻了项目的管理工作负担，从简化的流程上间接提高了效率。
+优点 了解了什么是ChatOps后，我们可以总结下所谓的ChatOps能给我们带来什么？
+概括下来，ChatOps大概有以下几个受益：
+ 公开透明 上下文共享 移动高效  第一个，显而易见的，所有操作都是在聊天平台中公开的，有聊天记录可以查询，所有人都能看到彼此的操作记录，由此带来的第二个好处，就是上下文共享，一些繁琐复杂的操作流程，可以通过查看记录了解进度，协调，这样工作承接会更加有序。
+还有一个很明显的好处就是移动高效，因为我们的操作端从电脑转移到了手机，pad等移动设备，也不需要输入冗长的命令，做很多次点击等操作，实际上会提高处理效率。
+使用场景 脑洞一番后，总结了一些可使用的场景。
+第一个，运维巡检，比如哪个夜黑风高的晚上，临睡前的我预感不妙，要看下现在硬件容量有可能爆满的服务器详情，这样可以提前处理下。
+另一个，就是告警查询，有时候告警泛滥，我如果不登陆监控页面的话，不清楚哪些告警已经处理了，哪些没有处理。这时候我可以@机器人来一个当前告警清单。
+第三个呢，就是紧急回滚。如同前文所说，比如哪天我们上好线，初期观察没啥问题，出去吃饭了，结果吃饭过程中出现大量告警，直接@机器人回滚操作，简单又高效。
+第四个呢，就是我们经常需要做的，硬件信息查询，比如服务器外网IP，硬件配置，比登陆CMDB查询方便多了。
+&amp;hellip;
+架构  ChatOps系统架构  一个完整的ChatOps落地包括这四个层面的架构，有人（不限于运维，研发，甚至可以是运营），有聊天平台（比如国内的钉钉，微信），有机器人（比如github的hubot），有支持机器人操作的基础设施，包括服务器，脚本，后端服务等等。
+后端服务作为ChatOps的主要开发对象，暂时没有很契合的开源方案，需要开发者自己开发相关逻辑。
+等级演变 下面分析下ChatOps的演变路线。  before ChatOps 
+在ChatOps之前，运维是直接对接监控系统的，没有聊天软件来进行信息同步。同时，告警处理和事件处理等运维操作都是基于Ad-hoc命令，通过shell客户端进行的。  lv1 
+到了Level1后呢，我们会针对告警创建不同的讨论群，比如某应用触发告警了，运维在群里通知开发进行处理。在这个层级，事件的发送者还是人。  lv2a 
+Level 2A后，我们已经可以把这些告警信息、事件详情等进行分类通知，比如硬件类告警专门发到一个群，应用类告警发到另一个群。这时候，事件的发送者变成了监控系统，然后还支持事件恢复通知。  lv2b 
+Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查询CMDB获取硬件信息，工单系统啊，监控指标啊等信息。此时信息更加丰富了。  lv3 
+到了level3后就是全自动化的交互。比如可以更新工单，事件状态，发出指令并查看执行结果。最重要的是我们能通过聊天工具跟监控系统等内部系统进行交互。  lv4'>
+<meta property='og:url' content='http://tinohean.top/p/%E6%B5%85%E8%B0%88chatops/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='chatops' /><meta property='article:published_time' content='2021-09-02T23:51:08&#43;08:00'/><meta property='article:modified_time' content='2021-09-02T23:51:08&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/%E6%B5%85%E8%B0%88chatops/chatops.jpeg' />
+<meta name="twitter:title" content="浅谈ChatOps">
+<meta name="twitter:description" content="浅谈ChatOps 背景 本文源自我在技术团队的一次分享。 八月的时候我调研了下ChatOps概念，并通过钉钉机器人成功落地。
+至于当时为什么要做ChatOps呢，主要是因为实力不足（不懂算法，监控数据量有限），无法推进AIOps进行运维平台的迭代升级。而ChatOps作为一个新兴的概念（其实也不新了），也属于智能运维的范畴，在国内还没有什么很红的应用方案。
+其次是当时出现了一些日常操作的痛点，比如某次研发小伙伴在午饭前上了一次线，午饭期间出现重大故障，只能捧着饭碗从食堂火速跑回工位回滚处理，再比如临睡前懒得去登陆监控页面的我想看下当前负载较大的服务器状况&amp;hellip;
+在这样的契机下，经过一系列脑洞挖掘出一些潜在的用途后，一款python&#43;dingtalk的简单原型就出来了。部署简单，实用，可定制性强。
+概念 理解什么是ChatOps，只需要了解两个要点
+ 会话驱动 机器执行  也就是说，这个系统是通过对话式的聊天进行驱动的，而背后真正的执行者从人变成了机器人。
+概念最早源于Github的Hubot项目，开发者可以通过在pull request页面@机器人进行一些常规的分支合并等操作。
+比如当下火热的kubernetes代码库， 一个叫k8s-ci-robot的机器人频频出现在开发者的视线。当然它在ChatOps的实践上已经走得很成熟了，可以胜任的一些常规操作包括：提醒代码库管理者review期限, 自动测试，自动加标签，自动格式检查，自动关闭长时间的issue,随机指定管理人员进行代码review等等。
+这在很大程度上减轻了项目的管理工作负担，从简化的流程上间接提高了效率。
+优点 了解了什么是ChatOps后，我们可以总结下所谓的ChatOps能给我们带来什么？
+概括下来，ChatOps大概有以下几个受益：
+ 公开透明 上下文共享 移动高效  第一个，显而易见的，所有操作都是在聊天平台中公开的，有聊天记录可以查询，所有人都能看到彼此的操作记录，由此带来的第二个好处，就是上下文共享，一些繁琐复杂的操作流程，可以通过查看记录了解进度，协调，这样工作承接会更加有序。
+还有一个很明显的好处就是移动高效，因为我们的操作端从电脑转移到了手机，pad等移动设备，也不需要输入冗长的命令，做很多次点击等操作，实际上会提高处理效率。
+使用场景 脑洞一番后，总结了一些可使用的场景。
+第一个，运维巡检，比如哪个夜黑风高的晚上，临睡前的我预感不妙，要看下现在硬件容量有可能爆满的服务器详情，这样可以提前处理下。
+另一个，就是告警查询，有时候告警泛滥，我如果不登陆监控页面的话，不清楚哪些告警已经处理了，哪些没有处理。这时候我可以@机器人来一个当前告警清单。
+第三个呢，就是紧急回滚。如同前文所说，比如哪天我们上好线，初期观察没啥问题，出去吃饭了，结果吃饭过程中出现大量告警，直接@机器人回滚操作，简单又高效。
+第四个呢，就是我们经常需要做的，硬件信息查询，比如服务器外网IP，硬件配置，比登陆CMDB查询方便多了。
+&amp;hellip;
+架构  ChatOps系统架构  一个完整的ChatOps落地包括这四个层面的架构，有人（不限于运维，研发，甚至可以是运营），有聊天平台（比如国内的钉钉，微信），有机器人（比如github的hubot），有支持机器人操作的基础设施，包括服务器，脚本，后端服务等等。
+后端服务作为ChatOps的主要开发对象，暂时没有很契合的开源方案，需要开发者自己开发相关逻辑。
+等级演变 下面分析下ChatOps的演变路线。  before ChatOps 
+在ChatOps之前，运维是直接对接监控系统的，没有聊天软件来进行信息同步。同时，告警处理和事件处理等运维操作都是基于Ad-hoc命令，通过shell客户端进行的。  lv1 
+到了Level1后呢，我们会针对告警创建不同的讨论群，比如某应用触发告警了，运维在群里通知开发进行处理。在这个层级，事件的发送者还是人。  lv2a 
+Level 2A后，我们已经可以把这些告警信息、事件详情等进行分类通知，比如硬件类告警专门发到一个群，应用类告警发到另一个群。这时候，事件的发送者变成了监控系统，然后还支持事件恢复通知。  lv2b 
+Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查询CMDB获取硬件信息，工单系统啊，监控指标啊等信息。此时信息更加丰富了。  lv3 
+到了level3后就是全自动化的交互。比如可以更新工单，事件状态，发出指令并查看执行结果。最重要的是我们能通过聊天工具跟监控系统等内部系统进行交互。  lv4"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/%E6%B5%85%E8%B0%88chatops/chatops.jpeg' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="http://tinohean.top" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>Back</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/%E6%B5%85%E8%B0%88chatops/">
+                <img src="/p/%E6%B5%85%E8%B0%88chatops/chatops_hu2af93606f657e048f3b8c35cecf8603a_39849_800x0_resize_q75_box.jpeg"
+                        srcset="/p/%E6%B5%85%E8%B0%88chatops/chatops_hu2af93606f657e048f3b8c35cecf8603a_39849_800x0_resize_q75_box.jpeg 800w, /p/%E6%B5%85%E8%B0%88chatops/chatops_hu2af93606f657e048f3b8c35cecf8603a_39849_1600x0_resize_q75_box.jpeg 1600w"
+                        width="800" 
+                        height="267" 
+                        loading="lazy"
+                        alt="Featured image of post 浅谈ChatOps" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/%E6%B5%85%E8%B0%88chatops/">浅谈ChatOps</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Sep 02, 2021</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    1 min read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h1 id="浅谈chatops">浅谈ChatOps</h1>
+<h2 id="背景">背景</h2>
+<p>本文源自我在技术团队的一次分享。
+八月的时候我调研了下ChatOps概念，并通过钉钉机器人成功落地。</p>
+<p>至于当时为什么要做ChatOps呢，主要是因为实力不足（不懂算法，监控数据量有限），无法推进AIOps进行运维平台的迭代升级。而ChatOps作为一个新兴的概念（其实也不新了），也属于智能运维的范畴，在国内还没有什么很红的应用方案。</p>
+<p>其次是当时出现了一些日常操作的痛点，比如某次研发小伙伴在午饭前上了一次线，午饭期间出现重大故障，只能捧着饭碗从食堂火速跑回工位回滚处理，再比如临睡前懒得去登陆监控页面的我想看下当前负载较大的服务器状况&hellip;</p>
+<p>在这样的契机下，经过一系列脑洞挖掘出一些潜在的用途后，一款python+dingtalk的简单原型就出来了。部署简单，实用，可定制性强。</p>
+<h2 id="概念">概念</h2>
+<p>理解什么是ChatOps，只需要了解两个要点</p>
+<ul>
+<li>会话驱动</li>
+<li>机器执行</li>
+</ul>
+<p>也就是说，这个系统是通过对话式的聊天进行驱动的，而背后真正的执行者从人变成了机器人。</p>
+<p>概念最早源于Github的Hubot项目，开发者可以通过在pull request页面@机器人进行一些常规的分支合并等操作。</p>
+<p>比如当下火热的kubernetes代码库， 一个叫k8s-ci-robot的机器人频频出现在开发者的视线。当然它在ChatOps的实践上已经走得很成熟了，可以胜任的一些常规操作包括：提醒代码库管理者review期限, 自动测试，自动加标签，自动格式检查，自动关闭长时间的issue,随机指定管理人员进行代码review等等。</p>
+<p>这在很大程度上减轻了项目的管理工作负担，从简化的流程上间接提高了效率。</p>
+<h3 id="优点">优点</h3>
+<p>了解了什么是ChatOps后，我们可以总结下所谓的ChatOps能给我们带来什么？</p>
+<p>概括下来，ChatOps大概有以下几个受益：</p>
+<ul>
+<li>公开透明</li>
+<li>上下文共享</li>
+<li>移动高效</li>
+</ul>
+<p>第一个，显而易见的，所有操作都是在聊天平台中公开的，有聊天记录可以查询，所有人都能看到彼此的操作记录，由此带来的第二个好处，就是上下文共享，一些繁琐复杂的操作流程，可以通过查看记录了解进度，协调，这样工作承接会更加有序。</p>
+<p>还有一个很明显的好处就是移动高效，因为我们的操作端从电脑转移到了手机，pad等移动设备，也不需要输入冗长的命令，做很多次点击等操作，实际上会提高处理效率。</p>
+<h3 id="使用场景">使用场景</h3>
+<p>脑洞一番后，总结了一些可使用的场景。</p>
+<p>第一个，运维巡检，比如哪个夜黑风高的晚上，临睡前的我预感不妙，要看下现在硬件容量有可能爆满的服务器详情，这样可以提前处理下。</p>
+<p>另一个，就是告警查询，有时候告警泛滥，我如果不登陆监控页面的话，不清楚哪些告警已经处理了，哪些没有处理。这时候我可以@机器人来一个当前告警清单。</p>
+<p>第三个呢，就是紧急回滚。如同前文所说，比如哪天我们上好线，初期观察没啥问题，出去吃饭了，结果吃饭过程中出现大量告警，直接@机器人回滚操作，简单又高效。</p>
+<p>第四个呢，就是我们经常需要做的，硬件信息查询，比如服务器外网IP，硬件配置，比登陆CMDB查询方便多了。</p>
+<p>&hellip;</p>
+<h3 id="架构">架构</h3>
+<p><figure style="flex-grow: 245; flex-basis: 589px">
+		<a href="/p/%E6%B5%85%E8%B0%88chatops/arch.jpg" data-size="2572x1048"><img src="/p/%E6%B5%85%E8%B0%88chatops/arch.jpg"
+				srcset="/p/%E6%B5%85%E8%B0%88chatops/arch_hu3759b242a349f1696964c87e34156d2e_167758_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/arch_hu3759b242a349f1696964c87e34156d2e_167758_1024x0_resize_q75_box.jpg 1024w"
+				width="2572"
+				height="1048"
+				loading="lazy"
+				alt="ChatOps系统架构">
+		</a>
+		
+		<figcaption>ChatOps系统架构</figcaption>
+		
+	</figure>
+一个完整的ChatOps落地包括这四个层面的架构，有人（不限于运维，研发，甚至可以是运营），有聊天平台（比如国内的钉钉，微信），有机器人（比如github的hubot），有支持机器人操作的基础设施，包括服务器，脚本，后端服务等等。</p>
+<p>后端服务作为ChatOps的主要开发对象，暂时没有很契合的开源方案，需要开发者自己开发相关逻辑。</p>
+<h3 id="等级演变">等级演变</h3>
+<p>下面分析下ChatOps的演变路线。
+<figure style="flex-grow: 185; flex-basis: 446px">
+		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv0.jpg" data-size="3168x1704"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv0.jpg"
+				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv0_hu8db856b81e95e4263262ebe5f0453b7d_277371_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv0_hu8db856b81e95e4263262ebe5f0453b7d_277371_1024x0_resize_q75_box.jpg 1024w"
+				width="3168"
+				height="1704"
+				loading="lazy"
+				alt="before ChatOps">
+		</a>
+		
+		<figcaption>before ChatOps</figcaption>
+		
+	</figure></p>
+<p>在ChatOps之前，运维是直接对接监控系统的，没有聊天软件来进行信息同步。同时，告警处理和事件处理等运维操作都是基于Ad-hoc命令，通过shell客户端进行的。
+<figure style="flex-grow: 178; flex-basis: 428px">
+		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv1.jpg" data-size="500x280"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv1.jpg"
+				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv1_hu4ca1c8cd216ff639f465812c8a18201e_33544_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv1_hu4ca1c8cd216ff639f465812c8a18201e_33544_1024x0_resize_q75_box.jpg 1024w"
+				width="500"
+				height="280"
+				loading="lazy"
+				alt="lv1">
+		</a>
+		
+		<figcaption>lv1</figcaption>
+		
+	</figure><br>
+到了Level1后呢，我们会针对告警创建不同的讨论群，比如某应用触发告警了，运维在群里通知开发进行处理。在这个层级，事件的发送者还是人。
+<figure style="flex-grow: 177; flex-basis: 427px">
+		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv2a.jpg" data-size="500x281"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv2a.jpg"
+				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv2a_hu084f3b19299c372e75c6bf2d8266f616_37367_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv2a_hu084f3b19299c372e75c6bf2d8266f616_37367_1024x0_resize_q75_box.jpg 1024w"
+				width="500"
+				height="281"
+				loading="lazy"
+				alt="lv2a">
+		</a>
+		
+		<figcaption>lv2a</figcaption>
+		
+	</figure><br>
+Level 2A后，我们已经可以把这些告警信息、事件详情等进行分类通知，比如硬件类告警专门发到一个群，应用类告警发到另一个群。这时候，事件的发送者变成了监控系统，然后还支持事件恢复通知。
+<figure style="flex-grow: 177; flex-basis: 427px">
+		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv2b.jpg" data-size="500x281"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv2b.jpg"
+				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv2b_hue8e82f0552d30e57dda4fa00ec412d76_36775_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv2b_hue8e82f0552d30e57dda4fa00ec412d76_36775_1024x0_resize_q75_box.jpg 1024w"
+				width="500"
+				height="281"
+				loading="lazy"
+				alt="lv2b">
+		</a>
+		
+		<figcaption>lv2b</figcaption>
+		
+	</figure><br>
+Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查询CMDB获取硬件信息，工单系统啊，监控指标啊等信息。此时信息更加丰富了。
+<figure style="flex-grow: 177; flex-basis: 425px">
+		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv3.jpg" data-size="500x282"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv3.jpg"
+				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv3_hu6f32d5eae2d5a8024dd3bd998b74ff56_38041_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv3_hu6f32d5eae2d5a8024dd3bd998b74ff56_38041_1024x0_resize_q75_box.jpg 1024w"
+				width="500"
+				height="282"
+				loading="lazy"
+				alt="lv3">
+		</a>
+		
+		<figcaption>lv3</figcaption>
+		
+	</figure><br>
+到了level3后就是全自动化的交互。比如可以更新工单，事件状态，发出指令并查看执行结果。最重要的是我们能通过聊天工具跟监控系统等内部系统进行交互。
+<figure style="flex-grow: 176; flex-basis: 424px">
+		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv4.jpg" data-size="500x283"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv4.jpg"
+				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv4_hu37bc8434d08197c307a6b96dcace7756_42159_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv4_hu37bc8434d08197c307a6b96dcace7756_42159_1024x0_resize_q75_box.jpg 1024w"
+				width="500"
+				height="283"
+				loading="lazy"
+				alt="lv4">
+		</a>
+		
+		<figcaption>lv4</figcaption>
+		
+	</figure><br>
+到了level4后，交互的中间人变成了机器人，机器人可以把对话转发到工单系统中，然后监控关键字并发送更新信息，更新知识库，总之就是交互更加智能。
+<figure style="flex-grow: 179; flex-basis: 430px">
+		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv5.jpg" data-size="500x279"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv5.jpg"
+				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv5_huda46efb471259f5b70bee8ec4320ecab_40177_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv5_huda46efb471259f5b70bee8ec4320ecab_40177_1024x0_resize_q75_box.jpg 1024w"
+				width="500"
+				height="279"
+				loading="lazy"
+				alt="lv5">
+		</a>
+		
+		<figcaption>lv5</figcaption>
+		
+	</figure><br>
+到了level5后。机器人演变成人工智能了，对于自然语言的理解有很大的提高，并可以根据知识库和历史记录推荐具体的解决方案了。此时可以认为达到了AIOps的层级了。</p>
+<h2 id="方案选型">方案选型</h2>
+<p>当今市面上开源机器人主要包括这三家</p>
+<ul>
+<li>Hubot</li>
+<li>Lita</li>
+<li>Err</li>
+</ul>
+<p>第一个就是我们前面所说的github开发的Hubot, 而Lita是一个ruby版本的Hubot,使用redis进行数据持久化， ErrBot是基于python开发的，内部支持rocketchat这个开源的聊天平台。</p>
+<p>这几个选型的缺点都是对国内聊天软件的支持度不够，不符合我们的使用习惯，另外就是hubot已经超过两年没有更新了，Errbot也是，rocketchat插件年久失修，新版本都不再支持。</p>
+<p>而钉钉集成的机器人，使用outgoing功能接受信息并进行处理，集成在当前的监控体系下，是一个最好的选择。</p>
+<h2 id="实现逻辑">实现逻辑</h2>
+<p>首先，我们要先开发一个后端服务，作为和钉钉机器人的交互对象。具体接口功能包括</p>
+<ul>
+<li>接收钉钉机器人的GET请求，作为健康检查。返回200</li>
+<li>接收钉钉机器人转发的各种Post请求，并进行处理</li>
+<li>回传处理结果给钉钉机器人</li>
+</ul>
+<p>然后，通过钉钉开发者后台创建一个内部应用，填入后端服务器的链接(此处GET请求属于健康检查，需要正常返回200即可)。</p>
+<p>最后，创建一个内部群，添加内部应用的机器人，将机器人token配置为后端服务的发送token。</p>
+<p>要点：</p>
+<ul>
+<li>钉钉机器人有qps上限（20次/min),此处可以借助queue模块实现频次控制。
+示例代码如下：</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python">    <span class="n">que</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">conn</span><span class="p">,</span> <span class="n">address</span> <span class="o">=</span> <span class="n">sock</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">que</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">now</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">que</span><span class="o">.</span><span class="n">full</span><span class="p">():</span>
+            <span class="n">elapse_time</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">que</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">elapse_time</span> <span class="o">&lt;</span> <span class="mi">60</span><span class="p">:</span>
+                <span class="n">sleep_time</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">60</span> <span class="o">-</span> <span class="n">elapse_time</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;当前发送频率已达限制每分钟20次上线，将等待 </span><span class="si">{}</span><span class="s1">s&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">sleep_time</span><span class="p">)))</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">sleep_time</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">Process</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">handle_request</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">conn</span><span class="p">,))</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div><ul>
+<li>对于请求的body解析要考虑交互的不同输入情况，比如大小写匹配，空格过滤等。</li>
+<li>做好Exception处理并进行提示。比如频次上限后的错误信息。</li>
+<li>有默认帮助信息，便于使用（此处我设置空白输入和help两种模式触发）。</li>
+<li>敏感token和密钥等通过configparser模块与代码分离。
+示例代码如下：</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">calc_sign</span><span class="p">(</span><span class="n">timestamp</span><span class="p">):</span>
+    <span class="n">app_secret</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;dingtalk&#39;</span><span class="p">][</span><span class="s1">&#39;app_secret&#39;</span><span class="p">]</span>
+    <span class="n">app_secret_enc</span> <span class="o">=</span> <span class="n">app_secret</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">string_to_sign</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">timestamp</span><span class="p">),</span> <span class="n">app_secret</span><span class="p">)</span>
+    <span class="n">string_to_sign_enc</span> <span class="o">=</span> <span class="n">string_to_sign</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">hmac_code</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">app_secret_enc</span><span class="p">,</span> <span class="n">string_to_sign_enc</span><span class="p">,</span> <span class="n">digestmod</span><span class="o">=</span><span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
+    <span class="n">sign</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">hmac_code</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sign</span>
+</code></pre></div><ul>
+<li>请求body的senderStaffId对应webhook的atUserIds，markdown格式需要在text处也写入@信息。<br>
+示例代码如下：</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">send_markdown</span><span class="p">(</span><span class="n">post_userid</span><span class="p">,</span> <span class="n">send_msg</span><span class="p">):</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&#34;msgtype&#34;</span><span class="p">:</span> <span class="s2">&#34;markdown&#34;</span><span class="p">,</span>
+        <span class="s2">&#34;markdown&#34;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&#34;title&#34;</span><span class="p">:</span><span class="s2">&#34;运维机器人&#34;</span><span class="p">,</span>
+            <span class="s2">&#34;text&#34;</span><span class="p">:</span> <span class="s1">&#39;@&#39;</span> <span class="o">+</span> <span class="n">post_userid</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">send_msg</span>
+        <span class="p">},</span>
+         <span class="s2">&#34;at&#34;</span><span class="p">:</span> <span class="p">{</span>
+             <span class="s2">&#34;atUserIds&#34;</span><span class="p">:</span> <span class="p">[</span>
+                 <span class="n">post_userid</span>
+             <span class="p">],</span>
+             <span class="s2">&#34;isAtAll&#34;</span><span class="p">:</span> <span class="kc">False</span>
+         <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</code></pre></div><h2 id="参考文档">参考文档</h2>
+<ol>
+<li><a class="link" href="https://www.jianshu.com/p/7aa2ced21302"  target="_blank" rel="noopener"
+    >https://www.jianshu.com/p/7aa2ced21302</a></li>
+<li><a class="link" href="https://www.ibm.com/garage/method/practices/manage/chatops/"  target="_blank" rel="noopener"
+    >https://www.ibm.com/garage/method/practices/manage/chatops/</a></li>
+<li><a class="link" href="https://github.com/zhuifengshen/DingtalkChatbot/blob/master/dingtalkchatbot/chatbot.py"  target="_blank" rel="noopener"
+    >https://github.com/zhuifengshen/DingtalkChatbot/blob/master/dingtalkchatbot/chatbot.py</a></li>
+<li><a class="link" href="https://developers.dingtalk.com/document/robots/enterprise-created-chatbot?spm=ding_open_doc.document.0.0.34f16573JlceHR#topic-2097982"  target="_blank" rel="noopener"
+    >https://developers.dingtalk.com/document/robots/enterprise-created-chatbot?spm=ding_open_doc.document.0.0.34f16573JlceHR#topic-2097982</a></li>
+<li><a class="link" href="https://community.ibm.com/HigherLogic/System/DownloadDocumentFile.ashx?DocumentFileKey=f6d1c85a-f2b2-9061-64e4-17be48ed3756&amp;forceDialog=0"  target="_blank" rel="noopener"
+    >https://community.ibm.com/HigherLogic/System/DownloadDocumentFile.ashx?DocumentFileKey=f6d1c85a-f2b2-9061-64e4-17be48ed3756&forceDialog=0</a></li>
+</ol>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/chatops/">chatops</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/paddle.f9980b85e5d47359ccd6cefec98ae32a_hu5438825b9b6d1014226d20d231e650c2_191045_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-&#43;ZgLheXUc1nM1s7&#43;yYrjKg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Paddle飞桨部署方案</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/soul/">
+        
+        
+            <div class="article-image">
+                <img src="/p/soul/soul.1ec3d9ceed2b95e92d1a2f57a754173e_hua5b7a4101002ac3de8aa87e6c8d8ffa6_107809_250x150_fill_q75_box_smart1.JPG" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-HsPZzu0rlektGi9Xp1QXPg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Soul</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/">
+        
+        
+            <div class="article-image">
+                <img src="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/prometheus.e68ccd07f88822501da63f6d6434fab2_hu29c20fb19d2aaa59a3207076dda60f90_67350_250x150_fill_q75_box_smart1.jpg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-5ozNB/iIIlAdpj9tZDT6sg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Prometheus常用Exporter及告警规则</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/nitendo-switch%E6%B8%B8%E6%88%8F%E6%B8%85%E5%8D%95%E4%B8%8D%E5%AE%9A%E6%9C%9F%E6%9B%B4%E6%96%B0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/nitendo-switch%E6%B8%B8%E6%88%8F%E6%B8%85%E5%8D%95%E4%B8%8D%E5%AE%9A%E6%9C%9F%E6%9B%B4%E6%96%B0/hollow_knight.f80d8420356db4decdc1b1bbcd854964_hue5dd0565eb5a9aa5879d634de1a27c55_568859_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-&#43;A2EIDVttN7NwbG7zYVJZA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Nitendo Switch游戏清单(不定期更新)</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/lonely.4b20fa7bc6fb4d6251edddaa9f152533_hu29c20fb19d2aaa59a3207076dda60f90_70248_250x150_fill_q75_box_smart1.jpg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-SyD6e8b7TWJR7d2qnxUlMw==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">三十而立</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+     
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2021 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">Table of contents</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#背景">背景</a></li>
+    <li><a href="#概念">概念</a>
+      <ol>
+        <li><a href="#优点">优点</a></li>
+        <li><a href="#使用场景">使用场景</a></li>
+        <li><a href="#架构">架构</a></li>
+        <li><a href="#等级演变">等级演变</a></li>
+      </ol>
+    </li>
+    <li><a href="#方案选型">方案选型</a></li>
+    <li><a href="#实现逻辑">实现逻辑</a></li>
+    <li><a href="#参考文档">参考文档</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

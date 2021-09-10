@@ -1,14 +1,336 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-  <channel>
-    <title>TinoHean</title>
-    <link>http://tinohean.top/</link>
-    <description>Recent content on TinoHean</description>
-    <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language>
-    
-	<atom:link href="http://tinohean.top/index.xml" rel="self" type="application/rss+xml" />
-    
-    
-  </channel>
+    <channel>
+        <title>半岛无风</title>
+        <link>http://tinohean.top/</link>
+        <description>Recent content on 半岛无风</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en-us</language>
+        <lastBuildDate>Thu, 02 Sep 2021 23:51:08 +0800</lastBuildDate><atom:link href="http://tinohean.top/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>浅谈ChatOps</title>
+        <link>http://tinohean.top/p/%E6%B5%85%E8%B0%88chatops/</link>
+        <pubDate>Thu, 02 Sep 2021 23:51:08 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E6%B5%85%E8%B0%88chatops/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E6%B5%85%E8%B0%88chatops/chatops.jpeg" alt="Featured image of post 浅谈ChatOps" /&gt;浅谈ChatOps 背景 本文源自我在技术团队的一次分享。 八月的时候我调研了下ChatOps概念，并通过钉钉机器人成功落地。
+至于当时为什么要做ChatOps呢，主要是因为实力不足（不懂算法，监控数据量有限），无法推进AIOps进行运维平台的迭代升级。而ChatOps作为一个新兴的概念（其实也不新了），也属于智能运维的范畴，在国内还没有什么很红的应用方案。
+其次是当时出现了一些日常操作的痛点，比如某次研发小伙伴在午饭前上了一次线，午饭期间出现重大故障，只能捧着饭碗从食堂火速跑回工位回滚处理，再比如临睡前懒得去登陆监控页面的我想看下当前负载较大的服务器状况&amp;hellip;
+在这样的契机下，经过一系列脑洞挖掘出一些潜在的用途后，一款python+dingtalk的简单原型就出来了。部署简单，实用，可定制性强。
+概念 理解什么是ChatOps，只需要了解两个要点
+ 会话驱动 机器执行  也就是说，这个系统是通过对话式的聊天进行驱动的，而背后真正的执行者从人变成了机器人。
+概念最早源于Github的Hubot项目，开发者可以通过在pull request页面@机器人进行一些常规的分支合并等操作。
+比如当下火热的kubernetes代码库， 一个叫k8s-ci-robot的机器人频频出现在开发者的视线。当然它在ChatOps的实践上已经走得很成熟了，可以胜任的一些常规操作包括：提醒代码库管理者review期限, 自动测试，自动加标签，自动格式检查，自动关闭长时间的issue,随机指定管理人员进行代码review等等。
+这在很大程度上减轻了项目的管理工作负担，从简化的流程上间接提高了效率。
+优点 了解了什么是ChatOps后，我们可以总结下所谓的ChatOps能给我们带来什么？
+概括下来，ChatOps大概有以下几个受益：
+ 公开透明 上下文共享 移动高效  第一个，显而易见的，所有操作都是在聊天平台中公开的，有聊天记录可以查询，所有人都能看到彼此的操作记录，由此带来的第二个好处，就是上下文共享，一些繁琐复杂的操作流程，可以通过查看记录了解进度，协调，这样工作承接会更加有序。
+还有一个很明显的好处就是移动高效，因为我们的操作端从电脑转移到了手机，pad等移动设备，也不需要输入冗长的命令，做很多次点击等操作，实际上会提高处理效率。
+使用场景 脑洞一番后，总结了一些可使用的场景。
+第一个，运维巡检，比如哪个夜黑风高的晚上，临睡前的我预感不妙，要看下现在硬件容量有可能爆满的服务器详情，这样可以提前处理下。
+另一个，就是告警查询，有时候告警泛滥，我如果不登陆监控页面的话，不清楚哪些告警已经处理了，哪些没有处理。这时候我可以@机器人来一个当前告警清单。
+第三个呢，就是紧急回滚。如同前文所说，比如哪天我们上好线，初期观察没啥问题，出去吃饭了，结果吃饭过程中出现大量告警，直接@机器人回滚操作，简单又高效。
+第四个呢，就是我们经常需要做的，硬件信息查询，比如服务器外网IP，硬件配置，比登陆CMDB查询方便多了。
+&amp;hellip;
+架构  ChatOps系统架构  一个完整的ChatOps落地包括这四个层面的架构，有人（不限于运维，研发，甚至可以是运营），有聊天平台（比如国内的钉钉，微信），有机器人（比如github的hubot），有支持机器人操作的基础设施，包括服务器，脚本，后端服务等等。
+后端服务作为ChatOps的主要开发对象，暂时没有很契合的开源方案，需要开发者自己开发相关逻辑。
+等级演变 下面分析下ChatOps的演变路线。  before ChatOps 
+在ChatOps之前，运维是直接对接监控系统的，没有聊天软件来进行信息同步。同时，告警处理和事件处理等运维操作都是基于Ad-hoc命令，通过shell客户端进行的。  lv1 
+到了Level1后呢，我们会针对告警创建不同的讨论群，比如某应用触发告警了，运维在群里通知开发进行处理。在这个层级，事件的发送者还是人。  lv2a 
+Level 2A后，我们已经可以把这些告警信息、事件详情等进行分类通知，比如硬件类告警专门发到一个群，应用类告警发到另一个群。这时候，事件的发送者变成了监控系统，然后还支持事件恢复通知。  lv2b 
+Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查询CMDB获取硬件信息，工单系统啊，监控指标啊等信息。此时信息更加丰富了。  lv3 
+到了level3后就是全自动化的交互。比如可以更新工单，事件状态，发出指令并查看执行结果。最重要的是我们能通过聊天工具跟监控系统等内部系统进行交互。  lv4</description>
+        </item>
+        <item>
+        <title>Paddle飞桨部署方案</title>
+        <link>http://tinohean.top/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</link>
+        <pubDate>Tue, 02 Mar 2021 13:33:54 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</guid>
+        <description>&lt;img src="http://tinohean.top/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/paddle.jpeg" alt="Featured image of post Paddle飞桨部署方案" /&gt;Paddle飞桨部署文档 Paddle是百度开源的一款深度学习平台
+基础环境 环境说明    项 版本     GPU NVIDA Tesla P4   操作系统 ubuntu 18.04 x86_64   硬件规格 4C20G 1Mbps + 100GB   Python 3.7.10   包管理 Anaconda 3   telsa驱动 NVIDIA-Linux-x86_64-418.152.00   cuda驱动 cuda_10.1.243_418.87.00_linux    环境预设  检查显卡  lspci | grep -i nvidia 2.确认gcc版本,没有则安装
+gcc --version 3.安装内核开发包
+sudo apt-get install linux-headers-$(uname -r) 4.禁掉Nouveau驱动
+echo &amp;#39;&amp;#39;&amp;#39;blacklist nouveau options nouveau modeset=0&amp;#39;&amp;#39;&amp;#39; | sudo tee /etc/modprobe.</description>
+        </item>
+        <item>
+        <title>【摄影】 海神庙</title>
+        <link>http://tinohean.top/p/%E6%91%84%E5%BD%B1-%E6%B5%B7%E7%A5%9E%E5%BA%99/</link>
+        <pubDate>Wed, 13 Jan 2021 15:30:08 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E6%91%84%E5%BD%B1-%E6%B5%B7%E7%A5%9E%E5%BA%99/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E6%91%84%E5%BD%B1-%E6%B5%B7%E7%A5%9E%E5%BA%99/bali.jpg" alt="Featured image of post 【摄影】 海神庙" /&gt;摄于巴厘岛海神庙 2021年1月13日 下午3:30</description>
+        </item>
+        <item>
+        <title>Soul</title>
+        <link>http://tinohean.top/p/soul/</link>
+        <pubDate>Thu, 31 Dec 2020 22:49:03 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/soul/</guid>
+        <description>&lt;img src="http://tinohean.top/p/soul/soul.JPG" alt="Featured image of post Soul" /&gt;Soul 早早在床上喝奶，她的口头禅变成了巴布，也就是抱抱的意思。
+这是她会说的为数不多的两个字的话。在她的世界里，什么都可以巴布。奶瓶，玩偶，鞋鞋，袜袜……她对她所有爱的事物说巴布，抱着的同时还会学着大人抱她那样摇晃。
+看着很幼稚，却觉得格外美好。
+每一个眼中的事物都可以成为她的spark。如同22号灵魂在地球上一样。
+今年的最后一天，我看完了soul。年度最佳影片终究姗姗来迟。
+什么是人生的意义，疫情之下，Soul这样的回答虽然老套，却真实得生痛。
+年龄越长，分享的欲望也渐趋于无，朋友圈已经没有几个人在分享自己的生活了，彼此抱有互不打扰，或者彼此屏蔽的信条。
+我一直在想，是什么让群里的气氛冷淡了下来，是什么让朋友圈变成了投票微商圈，或者说，是什么让成年人变得沉默，无趣。
+22号灵魂在地球的短暂一天，让我突然意识到成年的真相：平淡，只是因为我们丢失了初生的视角。  Live every minute!</description>
+        </item>
+        <item>
+        <title>Prometheus常用Exporter及告警规则</title>
+        <link>http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/</link>
+        <pubDate>Wed, 23 Dec 2020 18:04:34 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/</guid>
+        <description>&lt;img src="http://tinohean.top/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/prometheus.jpg" alt="Featured image of post Prometheus常用Exporter及告警规则" /&gt;Prometheus常用Exporter及硬件指标 Exporter node_exporter 链接：https://github.com/prometheus/node_exporter
+用途：用于类UNIX内核暴露的系统及硬件指标获取，比如CPU,MEM,DISK,FD等
+process_exporter 链接：https://github.com/ncabatoff/process-exporter
+用途：对于一些没有适配Prometheus的应用，可以抓取/proc下面的数据进行指标获取，比如线程数，上下文切换，IO,FD等
+blackbox_exporter 链接：https://github.com/prometheus/blackbox_exporter
+用途：黑盒探针，应用于一些web服务，API服务的可用性监控，可以通过TCP,HTTP,HTTPS等方式，常见指标包括response code, dns lookup time, duration time等
+mysqld_exporter 链接：https://github.com/prometheus/mysqld_exporter
+用途：暴露的mysql监控指标，比如连接数，各类CMD qps，buffer大小等
+redis_exporter 链接：https://github.com/oliver006/redis_exporter
+用途：暴露的redis监控指标，比如QPS，命中率，网络IO，key数量等
+druid_exporter 链接：https://github.com/wikimedia/operations-software-druid_exporter
+用途：暴露的druid.io相关监控指标，不是很全，可自己定制
+jmx_exporter 链接：https://github.com/prometheus/jmx_exporter
+用途：java类应用暴露的相关指标。比如kafka，hadoop生态
+另外，告警体系如果包括钉钉的话，推荐dingtalk_webhook
+Alerts Rules blackbox_exporter 常用的只有存活状态和状态码异常告警
+- alert:BlackboxProbeFailedexpr:probe_success == 0for:0mlabels:severity:criticalannotations:summary:Blackbox probe failed (instance {{ $labels.instance }})description:&amp;#34;Probe failed\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;- alert:BlackboxProbeHttpFailureexpr:probe_http_status_code &amp;lt;= 199 OR probe_http_status_code &amp;gt;= 400for:0mlabels:severity:criticalannotations:summary:Blackbox probe HTTP failure (instance {{ $labels.instance }})description:&amp;#34;HTTP status code is not 200-399\n VALUE = {{ $value }}\n LABELS = {{ $labels }}&amp;#34;mysql_exporter 通常包括存活状态，慢查询等。</description>
+        </item>
+        <item>
+        <title>Nitendo Switch游戏清单(不定期更新)</title>
+        <link>http://tinohean.top/p/nitendo-switch%E6%B8%B8%E6%88%8F%E6%B8%85%E5%8D%95%E4%B8%8D%E5%AE%9A%E6%9C%9F%E6%9B%B4%E6%96%B0/</link>
+        <pubDate>Sun, 22 Nov 2020 21:34:06 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/nitendo-switch%E6%B8%B8%E6%88%8F%E6%B8%85%E5%8D%95%E4%B8%8D%E5%AE%9A%E6%9C%9F%E6%9B%B4%E6%96%B0/</guid>
+        <description>&lt;img src="http://tinohean.top/p/nitendo-switch%E6%B8%B8%E6%88%8F%E6%B8%85%E5%8D%95%E4%B8%8D%E5%AE%9A%E6%9C%9F%E6%9B%B4%E6%96%B0/hollow_knight.jpeg" alt="Featured image of post Nitendo Switch游戏清单(不定期更新)" /&gt;NS游戏清单 已购 已购清单及个人评分
+ 超级马里奥:奥德赛 ⭐️⭐️⭐️⭐️⭐️ 马里奥赛车8:豪华版⭐️⭐️⭐️⭐️ 空洞骑士 ⭐️⭐️⭐️⭐️⭐️ 塞尔达传说：旷野之息 ⭐️⭐️⭐️⭐️⭐️ 暗黑破坏神3：永恒之战版 ⭐️⭐️⭐️⭐️ 健身环大冒险 ⭐️⭐️⭐️⭐️ 雷曼：传奇终结版 ⭐️⭐️⭐️⭐️ 血流2 ⭐️⭐️⭐️ 挺进地牢 ⭐️⭐️⭐️ 九张羊皮纸 ⭐️⭐️⭐️  待购 心愿清单
+ 茶杯头 巫师3：狂猎 （PC没通关） 路易的鬼屋3：豪华版 （借卡玩通关了，收藏） 超级马里奥：派对 （轰趴没玩够） 死亡细胞 （空洞骑士还不出丝之歌） 歧路旅人 （试玩版很有意思，风格喜欢） 马里奥网球Aces (除了健身环没有其他运动类游戏卡了) ARMS （同上） 塞尔达传说: 旷野之息2 （通关后爬山爬累了） 小小梦魇2：豪华版（DEMO有意思） 蜡烛：火焰的力量 （风格喜欢） 三位一体：终极典藏版 （游戏风格） 光之子：豪华版 （游戏风格） 精灵与萤火意志 （游戏风格） 空洞骑士：丝之歌  </description>
+        </item>
+        <item>
+        <title>【摄影】趁秋天还逗留</title>
+        <link>http://tinohean.top/p/%E6%91%84%E5%BD%B1%E8%B6%81%E7%A7%8B%E5%A4%A9%E8%BF%98%E9%80%97%E7%95%99/</link>
+        <pubDate>Sun, 08 Nov 2020 20:10:34 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E6%91%84%E5%BD%B1%E8%B6%81%E7%A7%8B%E5%A4%A9%E8%BF%98%E9%80%97%E7%95%99/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E6%91%84%E5%BD%B1%E8%B6%81%E7%A7%8B%E5%A4%A9%E8%BF%98%E9%80%97%E7%95%99/leaves.JPG" alt="Featured image of post 【摄影】趁秋天还逗留" /&gt;摄于上海青浦 2020年11月8日 下午16:37 
+ 摄于上海青浦 2020年11月8日 下午16:44</description>
+        </item>
+        <item>
+        <title>三十而立</title>
+        <link>http://tinohean.top/p/%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/</link>
+        <pubDate>Wed, 05 Aug 2020 09:25:29 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/lonely.jpg" alt="Featured image of post 三十而立" /&gt;三十而立 8月5日 台风过境 在家里拉了肚子，疼痛缓解。
+临走的时候早早跟我挥手，我知道她想出去玩。坐上公交车，发现鞋子和裤子湿透，背包湿了一半，眼镜上有零星雨滴。
+卷起了裤腿，就像卷起人生的上半段，一个触目惊心的念头，突然就袭了过来：自己已然走在奔四的路上，时间所剩无几。
+年龄越长，牙齿这座城墙也越加贪婪。随便吃点肉，都会克扣你几缕肉丝，任你牙签牙线各种武装，自岿然不动。
+随之而来的，还有脱离身体航道的脖子。它正在以你闻所未闻的速度跑向衰老。头晕，落枕，酸痛，这些都是它的同伙。每当我试图后仰，咔啪作响的颈椎骨像是冬眠的冰一样裂开，沿着头颅带给你一记沉闷的重击。
+这些崭新的生理体验，是父辈们未能完全传承过的。
+眼前这一垛垛的高楼，淹没了父辈们留下来的路。他们拥有麦地，锄头。我只剩下一双近视昏花的眼睛，视线所及，一切都是模糊的，不可名状的。
+有时候，我不禁会想，如果命运最优解只有一条，双手握住，迎合我的是键盘还是锄头。
+地铁里的灯突然灭了 无数个亮着的手机屏幕如同黑暗宇宙中的小小星球，围绕着同样的脑袋，自转，然后不可避免地走向坍塌，变得冷而硬。
+这些小星球，年轻又衰老，坚强又脆弱。它们和我一样，有着这个年龄段独有的孤独。这种张爱玲所描述的孤独，源于不可卸下的责任，和无可依靠的臂膀。
+中年以后的男人
+时常会觉得孤独
+因为他一睁开眼睛
+周围都是要依靠他的人
+却没有他可以依靠的人
+随着年龄增长的，还有心智。
+认知变得越来越清晰，判断越来越理性。只是理性的行动，换不来情绪的正向。
+这几年，我总是觉得焦虑。梦境里都是消极的情节，灾难，逃生。那些看过的科幻小说，电影，正在通过这样的方式填充着我的梦境。我梦到过移民星球的空气泄露，飞船的坠落，恒星的逼近。而重复次数最多的，无疑是末日版的洪水逃亡，每次我都携家带口，拼命挣扎，到了天明苏醒后，空余疲惫。
+想不清楚的是，这焦虑，是环境给自己的，还是自己潜意识附加的。人，到底是理性的主导还是情绪的奴隶，抑或是两者交替接管的复杂体。
+五一的时候，我带着老婆孩子回了趟黄山，开始了帮家里人接第一单民宿生意。接待，清扫，端盘，洗碗，然后在虫子的撞击门窗声中沉沉睡去，一夜无梦。耳鸣和头晕症状消失了。心情大好。找上门来的客人喝酒喝嗨了，拉着老丈人的手一直夸，语气是毫无掩饰的真诚。我在前台坐着，竟也感觉到一种前所未有的平静。不担心房租，房贷，不操心工作，绩效，只需做好最简单的事：招待好客人。
+曾经看过很多隐居的报道，那些放弃城市回归群山的人类，成了城市的谈资。有隐隐的羡慕，内心却是很明确的：这不是我想要的生活。
+上半年，我看了《瓦尔登湖》，试图在里面寻找自己的平静，一无所获。
+实践证明，别人的方式永远不是自己的解药。
+后来，听说终南山因为隐居者众多，房租物价膨胀。那些真的放弃物质的隐居者又被迫回归了城市，令人遗憾。
+世间种种，总会有自我意识的延续载体。而人的站立，终究要在这样的混乱中成立以来，担负起责任，不可推卸，一直前行。</description>
+        </item>
+        <item>
+        <title>Kubeadm部署kubernetes集群</title>
+        <link>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/</link>
+        <pubDate>Fri, 14 Feb 2020 22:52:33 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/</guid>
+        <description>&lt;img src="http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/kubernetes.png" alt="Featured image of post Kubeadm部署kubernetes集群" /&gt;Kubeadm部署kubernetes集群 前期准备 节点规划    主机名 角色 ip 配置 系统版本     k8s-master-01 master 172.21.0.3 4C8G Ubuntu 16.04.1 LTS   k8s-master-02 master 172.21.0.4 4C8G Ubuntu 16.04.1 LTS   k8s-master-03 master 172.21.0.5 4C8G Ubuntu 16.04.1 LTS   k8s-node-01 node 172.21.0.6 4C8G Ubuntu 16.04.1 LTS   k8s-node-02 node 172.21.0.7 4C8G Ubuntu 16.04.1 LTS   k8s-apiserver LB apiserver.k8s.local nginx实现的localproxy     环境配置 所有服务器都需要进行基本环境配置，比如关闭防火墙，关闭swap等</description>
+        </item>
+        <item>
+        <title>部署策略及容器化实现</title>
+        <link>http://tinohean.top/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/</link>
+        <pubDate>Sat, 21 Sep 2019 23:11:56 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.jpeg" alt="Featured image of post 部署策略及容器化实现" /&gt;应用容器化改造的设计原则及模式 蓝绿发布 kubernetes实现 金丝雀发布 kubernetes实现 参考文档  https://harness.io/blog/continuous-verification/blue-green-canary-deployment-strategies/ https://medium.com/tech-at-wildlife-studios/canary-deployment-in-kubernetes-how-to-use-the-pattern-b2e9c40d085d https://kubernetes.io/zh/docs/concepts/cluster-administration/manage-deployment/ https://www.ianlewis.org/en/bluegreen-deployments-kubernetes  </description>
+        </item>
+        <item>
+        <title>CMD和ENTRYPOINT的配置比对详解</title>
+        <link>http://tinohean.top/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/</link>
+        <pubDate>Mon, 02 Sep 2019 11:47:40 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/</guid>
+        <description>&lt;img src="http://tinohean.top/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/cmd.png" alt="Featured image of post CMD和ENTRYPOINT的配置比对详解" /&gt;CMD和ENTRYPOINT的配置比对详解 概述 Dockerfile的语法包括CMD和Entrypoint两种格式都可以配置用于容器内主进程的启动，两者的语义并不是很合适。新上手很容易搞不清楚两者之间的区别和关系，在不同的配置搭配下会产生怎样的运行效果也没有一个条理清晰的思路。
+同样的，k8s也有一套类似的配置语法：command和args。那么k8s的语法中两者又是怎样的搭配关系，它们跟docker语法又是怎样的映射关系呢？
+本文将进行详情分析。
+Docker中CMD和ENTRYPOINT的区别 两种运行模式 不管是CMD还是ENTRYPOINT配置，实际都是有两种模式：SHELL模式，EXEC模式。
+SHELL模式 命令是运行在命令解析器中的，比如linux的/bin/sh -c, windows的cmd /S /C。
+此时容器中的init进程（PID为1）是/bin/sh -c &amp;lt;process&amp;gt;，而不是容器的可执行程序，&amp;lt;process&amp;gt;只做为/bin/sh -c的子进程存在。
+Linux内核机制下，PID为1的进程（通常是init)有区别与其他进程的地方：
+ PID为1的进程死掉后，其他所有进程都会被KILL信号杀死（也就是强制退出） 当某父进程死掉后，PID为1的进程会自动继承为其子进程的父进程。 内核不会为PID为1的进程自动注册信号处理程序。PID为1的进程无法接受SIGTERM和SIGINT这类信号，只能SIGKILL强制退出。  因此，我们无法通过docker stop &amp;lt;container&amp;gt;进行优雅退出，因为kubernetes和docker只能发送SIGKILL信号给PID为1的进程，而此时PID为1的/bin/sh -c 没办法传递信号给&amp;lt;process&amp;gt;，只会通过SIGKILL强制退出。而强制退出带来的后果可能是写入中断，数据异常等。
+当然也有解决办法,比如共享进程的namespace，使用专门的init程序，比如tini,supervisor等。最方便的是使用exec命令从shell脚本启动进程，进程会继承PID 1：
+# shell模式下，通过exec配置可以接受signalENTRYPOINT exec cmd1 param1语法如下
+#单独用CMDCMD command param1 param2#单独用ENTRYPOINTENTROYPOINT command param1 param2#搭配使用只会执行ENTRYPOINT，因此CMD此时配置没什么意义以上的运行效果是一样的。
+EXEC模式 主进程就是&amp;lt;process&amp;gt;,所以不经过shell默认的环境变量解释替换过程。由此带来的问题是，类似cd ~和cd $HOME是无效的，因为此时是docker负责进行变量解析。
+这种模式下配置是被解析成json array的，因此必须全部使用双引号！
+语法如下
+# 单独用CMDCMD [&amp;#34;executable&amp;#34;, &amp;#34;param1&amp;#34;, &amp;#34;param2&amp;#34;]# 单独用ENTRYPOINTENTRYPOINT [&amp;#34;executable&amp;#34;, &amp;#34;param1&amp;#34;, &amp;#34;param2&amp;#34;]# 搭配使用1ENTRYPOINT [&amp;#34;executable&amp;#34;]CMD [&amp;#34;param1&amp;#34;, &amp;#34;param2&amp;#34;]# 搭配使用2ENTRYPOINT [&amp;#34;executable&amp;#34;, &amp;#34;param1&amp;#34;]CMD [&amp;#34;param2&amp;#34;]以上语法的运行效果也是一样的。
+配置 简单来说，CMD和ENTRYPOINT的作用都一样，都是用于容器的主进程启动。唯一不同的是，当配置了ENTRYPOINT时，CMD只作为ENTRYPOINT的命令参数存在。两者也可以单独存在。
+因此，配置其实有三种方式</description>
+        </item>
+        <item>
+        <title>应用容器化改造的设计原则及模式</title>
+        <link>http://tinohean.top/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/</link>
+        <pubDate>Wed, 15 May 2019 19:24:26 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/container.jpeg" alt="Featured image of post 应用容器化改造的设计原则及模式" /&gt;应用容器化改造的设计原则及模式 前言 传统应用在应对流量突发等情况时需要一个完善的紧急响应机制，比如自动弹性伸缩。但由于软硬件限制，自动弹性伸缩在物理机上实现复杂。
+尽管kubernetes学习路线陡峭，复杂度高，但是考虑到成本和效率，推进应用进行容器化改造是一个收益率很高的事情。
+在经历数次微博流量飙升导致深夜紧急手动扩容后，我终于下定决心将两个核心应用迁移到容器上了。
+当然，并不是所有应用都适合容器化，传统应用进行容器化也需要进行一些适配性地改造。
+本文是我调研容器化的改造设计原则及模式的成果。
+设计原则 单一职责原则  SINGLE CONCERN PRINCIPLE 
+字面意识就是只做一件事，并把它做好。
+根据Docker最佳实践解释，一个容器应当仅包含一个进程。 此处的进程是指具有唯一父进程且可能拥有多个子进程的单个软件。
+目的是为了增加镜像的可复用性和可移植性，单父进程带来的相同的生命周期和状态也便于kubernetes管理。
+生产环境中不可避免会遇到一些例外。一些复杂的场景需要多个进程协调，此时可以使用边车模式（sidecar)解决。比如tomcat日志归集。
+高可观测性原则  HIGH OBSERVABILITY PRINCIPLE 
+容器的设计决定了它的不便观测性，一个运行中的容器对管理者来说是一个黑盒状态，因此不能像虚拟机一样随时TTY登陆查看容器内部的状态，包括进程的日志，进程的启动等。
+那么探针的设计就显得格外重要了。通过探针，kubernetes可以知晓容器的存活，服务就绪状态等。
+除了探针外，我们还需要设计日志接口和监控接口来对接Fluentd,Prometheus等工具进行日常操作，比如日志归集，指标监控等。
+总结下来，容器化的应用需要做好三类接口设计，以便于通过平台进行状态管理和维护：
+ 探针 日志 监控  生命周期符合性原则  LIFE-CYCLE CONFORMANCE PRINCIPLE 
+kubernetes这类平台为了方便管理容器的生命周期，会产生各种各样的events。这类事件主要是通过Linux信号进行传递,比如SIGTERM和SIGKILL。
+因此，在设计容器应用的时候，开发者需要对这类事件做出恰当的反应逻辑规划并保持符合性。比如进程能接受SIGTERM信号后优雅退出。
+镜像不变性原则  IMAGE IMMUTABILITY PRINCIPLE  镜像作为容器的运行基本,应该保持不变的。这样才有可能进行回滚和滚动发布，从而推动自动化。
+这个原则意味着什么呢？每次变更应该是重新构建一个镜像并应用于所有环境。
+对于一些不同的环境需求，比如开发环境，测试环境，可以通过外部存储runtime数据来进行区分。
+进程可弃型原则  PROCESS DISPOSABILITY PRINCIPLE  基于上面的镜像不变性原则，每次应用变更应该是重新构建，所以容器必须是随时可以销毁的。
+无状态的应用是最适合容器化的，当然有状态的应用也可以通过外部持久卷的方式存储运行时数据来实现这一原则。
+自包含原则  SELF-CONTAINMENT PRINCIPLE  容器作为一个黑盒环境，除了Linux内核外，应该不依赖于任何外部依赖。镜像应该打包了所有应用运行所需的库文件，语言环境等。
+运行时限制原则  RUNTIME CONFINEMENT PRINCIPLE  容器运行时所需的任何硬件资源，比如cpu,mem等，应该做好配额管理，包括使用量声明和实际使用限制。 这个原则主要是为了便于资源调度，弹性伸缩等。</description>
+        </item>
+        <item>
+        <title>监控方案-druid篇</title>
+        <link>http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/</link>
+        <pubDate>Mon, 16 Oct 2017 22:43:41 +0000</pubDate>
+        
+        <guid>http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/druid.jpeg" alt="Featured image of post 监控方案-druid篇" /&gt;监控系统-druid.io 公司的业务日志是通过syslog-ng喂给kafka,提供给spark消费并进行数据清洗，然后把数据导入到druid进行实时聚合查询。
+监控维度覆盖到了druid.io的性能指标上，而针对druid.io的监控能找到的文档不多,官方文档略显简陋而且分散,方案落地的时候碰到了很多坑。
+趁记忆还新鲜整理出这篇文章。
+部署及配置 方案说明 druid配置graphite-emitter,把相关metrics发送给graphite,然后由grafana做前端展示及告警
+版本说明 系统版本：Ubuntu 14.04
+druid版本：imply-2.5.5 druid-0.12.0
+graphite版本: latest
+druid配置 关于监控，druid有几个相关术语简单解释下。
+ metrics monitors emitter  metrics  druid提供的用于监控的各类指标，包括各节点的系统资源使用统计，请求相关统计等。
+格式默认是json。通用字段包括 timestamp,metrics,service,host,value。 不过有一些metrics会有额外的dimensions,比如dataSource,type等。
+ monitors  同一类别metrics分属的组。
+druid支持的monitors包括（由于公司架构不包含realtime等节点，这里仅列举我使用的monitors）：
+ io.druid.client.cache.CacheMonitor
+Historical和Broker两个节点的cache统计数据 com.metamx.metrics.SysMonitor
+系统资源使用量统计，这里记得需要下载一个jar包在lib目录 io.druid.server.metrics.HistoricalMetricsMonitor
+Historical节点数据统计 com.metamx.metrics.JvmMonitor
+JVM相关统计 io.druid.server.metrics.QueryCountStatsMonitor
+Broker,historical两个节点的请求数统计   emitter  发送metrics的工具。 默认是logging,即直接把监控数据写入日志中。后续脚本筛选出来发送给监控系统，扩展性太差。
+还有一种方式&amp;rsquo;http&#39;,把metrics通过POST的方式发送给server。 两者可以混合使用，不过日志量实在太大&amp;hellip;除此之外，还有一种选择，就是graphite emitter。
+优点当然是配置灵活，扩展性强。 不过graphite-emitter是社区版的一个插件，需要独立安装。
+ 这里需要重点注意的是:
+ 不同的metrics归属于不同的monitors,而不同的节点支持的monitors不同
+ 所以monitors配置尽量不要配置在common下，以免出现报错，甚至出现druid节点无法启动的现象。
+比如监控historical的统计数据，就需要开启io.druid.server.metrics.HistoricalMetricsMonitor，如果配置在common中，你会发现其他节点有各种诡异的报错，各种启动失败&amp;hellip;跳坑无数的血泪教训
+部署过程 安装graphite 关于graphite，只需要了解大概架构即可。其实有点类似ELK的模式，graphite也包括三种模块。
+ carbon: 接收数据。本身并不会采集数据。这一点官方文档特意强调了。 whisper: 时序数据库，存储carbon接收的数据。替代品包括influxdb等。 graphite-web: Django编写的一个web应用，把数据渲染成图形。替代品当然是美丽优雅的grafana了。  如上所述，其实graphite本身也有绘图功能，只不过效果相当简陋&amp;hellip;还好grafana有官方app可以直接使用graphite当作data source。</description>
+        </item>
+        <item>
+        <title>监控方案-kafka篇</title>
+        <link>http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/</link>
+        <pubDate>Tue, 11 Jul 2017 22:45:20 +0000</pubDate>
+        
+        <guid>http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/grafana.png" alt="Featured image of post 监控方案-kafka篇" /&gt;kafka监控篇 方案调研 针对kakfa的监控，简单调研了下，业界比较流行的几款解决方案:
+ KafkaOffsetMonitor Kakfa Manager kakfa Monitor Kafka Eagle  对于当前的zabbix+grafana监控框架来说，都略显笨重。
+而kafka官方文档关于monitor的说明：可以通过内嵌的JMX的方式获取kafka各类metrics,无需安装任何额外的组件。同时zabbix可以通过zabbix-java-gateway的组件实现监控JMX。
+考虑再三，决定了技术方案：
+ 开启kafka的JMX zabbix server通过zabbix-java-gateway访问JMX获取各metrics grafana实现监控数据可视化  优点:
+当然是跟现有的监控体系结合在一起，不用再额外搭建一套新的监控系统了。
+缺点:
+经过一系列跳坑，发现kafka的java跟zabbix-java-gateway以及zabbix-server跟zabbix-java-gateway之间的版本兼容性不太好，实测不向下兼容。鉴于此，kakfa与zabbix-server的系统版本最好一致。
+针对这个缺点，可以通过JMX的command line工具,脚本化获取需要监控的metrics,然后定时任务发送给zabbix,无需安装zabbix-java-gateway。
+此类工具很多，最简单的是一个jar包。
+配置部署 zabbix server配置了java-gateway(192.168.1.10)后会pre-fork与配置数量相匹配的java-poller进程，java-poller会请求JavaGateway，而JavaGateway会调用JMX management API，获取已对其开放权限的JMX(192.169.1.11)的各类metrics值
+zabbix-server 新建host,监控接口选择JMX，默认端口是12345。
+一个典型的JMX item包含两个方面：
+jmx[object_name,attribute_name] object_name就是选择的kafka的metrics,然后后面就是该metrics对应的attributes 监控的各类metrics。此处最好做一个模板,方便后续的导入
+zabbix-server.conf相关配置
+#javaGateway的IP JavaGateway=192.168.1.10 #默认端口10052 JavaGatewayPort=10052 #javaPoller的进程数量 StartJavaPollers=5 zabbix-java-gateway sudo apt-get install zabbix-java-gateway 默认配置即可
+kafka JMX JMX的调用需要在启动脚本加入相关参数配置，指定端口及放权IP,这里仅列举下不需要ssl认证的简单配置
+local:
+-Dcom.sun.management.jmxremote \ -Dcom.sun.management.jmxremote.port=12345 \ -Dcom.sun.management.jmxremote.authenticate=false \ -Dcom.sun.management.jmxremote.ssl=false \ remote:
+-Dcom.sun.management.jmxremote \ -Dcom.sun.management.jmxremote.port=12345 \ -Dcom.</description>
+        </item>
+        <item>
+        <title>文件锁flock实现函数级别的调用控制</title>
+        <link>http://tinohean.top/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/</link>
+        <pubDate>Thu, 13 Apr 2017 21:01:45 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/flock.jpeg" alt="Featured image of post 文件锁flock实现函数级别的调用控制" /&gt;需求场景 有一个python上线部署脚本，兼具重启和健康检查功能，当上线重启的时候希望定时任务的健康检查不要触发任何重启操作。
+同时，如果执行重启的时候碰到正在例行的健康检查，等待，直到健康检查结束。
+即: 当一个脚本被多次调用时（非多线程），使用flock控制其内同一个函数的调用控制。
+由于是多进程，线程锁是无效的，简单的使用python的fcntl模块的文件锁可以实现这个需求
+关于文件锁 linux内核提供的一种进程之间资源防竞争机制。防止多进程间使用同一个共享资源时同时操作造成错乱。
+鉴于linux中一切皆文件，所以文件锁有很多使用的空间。
+锁分为劝告锁和强制锁。劝告锁只是一个非强制的约定规则，即可以不遵守。所以需要不同进程间约定协调。而强制锁则由内核进行强制约束。
+此外，两种锁都可以有共享和排他的分类，分别是共享锁（读锁）和排他锁（写锁）
+ 共享锁:
+我在它身上上了一把锁，你也可以过来读取它 排他锁:
+我在它身上上了一把锁，我要写东西进去，这期间你不能读也不能写  关于两种锁的不同进程间的兼容关系
+     进程B共享锁 进程B排他锁     进程A锁     无 是 是   共享锁 是 否   排他锁 否 否    强制锁由内核进行强制约束，当文件加有共享锁后，其他进程对文件对写操作会被内核阻止，当文件加有排他锁后，其他进程任何操作都会被阻止塞。阻止包括是堵塞-等待，非堵塞-立刻返回错误信号EAGAIN。
+详细如下表
+   当前锁 堵塞读 堵塞写 非堵塞读 非堵塞写     共享锁 正常读 堵塞 正常读 EAGAIN   排他锁 堵塞 堵塞 EAGAIN EAGAIN    注意：</description>
+        </item>
+        <item>
+        <title>雪山</title>
+        <link>http://tinohean.top/p/%E9%9B%AA%E5%B1%B1/</link>
+        <pubDate>Sun, 02 Apr 2017 18:16:30 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E9%9B%AA%E5%B1%B1/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E9%9B%AA%E5%B1%B1/snowmountain.png" alt="Featured image of post 雪山" /&gt;雪山 上个月我在公司内部做了一次关于docker的技术分享，主题就是简单介绍下docker的技术原理及使用。在做PPT的时候，我发现这并不是一个那么容易的事情。
+难点其一是技术原理的理解。与研发不同的是，运维平时并不注重深入了解技术实现这一块。对于工具型的技术方案，一般仅限于了解其大概的模块框架，并不具备对外者讲解清楚技术封装的基本能力。这样的学习模式好处是上手快，翻翻文档很容易就部署一套完整的体系。坏处也显而易见，遇到系统性的问题很难有思路去排查，对于配置也是照本宣科，依靠百度和谷歌解决大部分问题。而对于传统运维来讲，系统底层技术面的匮乏，加上代码阅读能力较低，能够深入了解一个技术框架的实现并不是一件很轻松的事情。
+难点其二是分享本身。分享之所以成为分享，其核心的逻辑是先自我消化，然后再通过讲解的方式阐述消化的内容。这一吞吐的过程势必暴露分享者的技术储备。同时，讲解者必须具备一定的逻辑和分析能力 ，将脑中形成的技术面归纳通过文图的形式条理化，具象化。将复杂的事情简单讲解出来是一个需要持久化练习的能力。人类本身讨厌一切复杂的事情。我更喜欢类比这个学习方法。类比的过程可以将抽象的层面具象化，更容易理解和记忆。然而技术上的理解，很难有类比的对象。我只能尝试用概括的方式把消化掉的一堆堆的文档和技术文章精炼为几个简单的图表。
+分享是一个自我思考及重复记忆的过程。在准备技术原理的过程中，我推翻了很多之前的技术误解，也消除了一些模棱两可的问题，对于docker的整体认知更加全面。除此之外，这一次分享把脑中的技术记忆渗入了更为底层的维度。而学习正是从理解到重复记忆最后到实践的过程。
+我的短板在系统化，基础。学的太杂而不深入，大部分技术都是浅尝辄止。可能也是很多运维的通病吧。写作可以强迫我去渗透，总结，记录。
+突然想起高中时读过的海子的一首诗 《最后一夜和第一日的献诗》
+今夜你的黑头发
+是岩石上寂寞的黑夜
+牧羊人用雪白的羊群
+填满飞机场周同的黑暗
+黑夜比我更早睡去
+黑夜是神的伤口
+你是我的伤口
+羊群和花朵也是岩石的伤口
+雪山 用大雪填满飞机场周围的黑暗
+雪山女神吃的是野兽穿的是鲜花
+今夜九十九座雪山高出天堂
+使我彻夜难眠
+在当年词汇匮乏的我心里留下了史诗般的具象。雪山这一画面感极强的描述简直惊为天人。这就是诗歌的魅力，也是海子的天才，简单的几个词语的使用，就能形成如此诗化的意境。海子心中的雪山真实的欲求是什么，我们已经无从知道了。然而，仅仅从意象而已，诗歌本身就有了意义。把脑中的画面形象地描述出来，写作者追求的终极目的之一无非是这样的境界了吧。为此，我也决定开一个个人网站，把内心所想化作一座座雪山。
+或许哪天，你看到这些文字，知晓了我当时的心境。那么，你也曾抵达我的峰顶。</description>
+        </item>
+        
+    </channel>
 </rss>

@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='应用容器化改造的设计原则及模式 前言 传统应用在应对流量突发等情况时需要一个完善的紧急响应机制，比如自动弹性伸缩。但由于软硬件限制，自动弹性伸缩在物理机上实现复杂。
+尽管kubernetes学习路线陡峭，复杂度高，但是考虑到成本和效率，推进应用进行容器化改造是一个收益率很高的事情。
+在经历数次微博流量飙升导致深夜紧急手动扩容后，我终于下定决心将两个核心应用迁移到容器上了。
+当然，并不是所有应用都适合容器化，传统应用进行容器化也需要进行一些适配性地改造。
+本文是我调研容器化的改造设计原则及模式的成果。
+设计原则 单一职责原则  SINGLE CONCERN PRINCIPLE 
+字面意识就是只做一件事，并把它做好。
+根据Docker最佳实践解释，一个容器应当仅包含一个进程。 此处的进程是指具有唯一父进程且可能拥有多个子进程的单个软件。
+目的是为了增加镜像的可复用性和可移植性，单父进程带来的相同的生命周期和状态也便于kubernetes管理。
+生产环境中不可避免会遇到一些例外。一些复杂的场景需要多个进程协调，此时可以使用边车模式（sidecar)解决。比如tomcat日志归集。
+高可观测性原则  HIGH OBSERVABILITY PRINCIPLE 
+容器的设计决定了它的不便观测性，一个运行中的容器对管理者来说是一个黑盒状态，因此不能像虚拟机一样随时TTY登陆查看容器内部的状态，包括进程的日志，进程的启动等。
+那么探针的设计就显得格外重要了。通过探针，kubernetes可以知晓容器的存活，服务就绪状态等。
+除了探针外，我们还需要设计日志接口和监控接口来对接Fluentd,Prometheus等工具进行日常操作，比如日志归集，指标监控等。
+总结下来，容器化的应用需要做好三类接口设计，以便于通过平台进行状态管理和维护：
+ 探针 日志 监控  生命周期符合性原则  LIFE-CYCLE CONFORMANCE PRINCIPLE 
+kubernetes这类平台为了方便管理容器的生命周期，会产生各种各样的events。这类事件主要是通过Linux信号进行传递,比如SIGTERM和SIGKILL。
+因此，在设计容器应用的时候，开发者需要对这类事件做出恰当的反应逻辑规划并保持符合性。比如进程能接受SIGTERM信号后优雅退出。
+镜像不变性原则  IMAGE IMMUTABILITY PRINCIPLE  镜像作为容器的运行基本,应该保持不变的。这样才有可能进行回滚和滚动发布，从而推动自动化。
+这个原则意味着什么呢？每次变更应该是重新构建一个镜像并应用于所有环境。
+对于一些不同的环境需求，比如开发环境，测试环境，可以通过外部存储runtime数据来进行区分。
+进程可弃型原则  PROCESS DISPOSABILITY PRINCIPLE  基于上面的镜像不变性原则，每次应用变更应该是重新构建，所以容器必须是随时可以销毁的。
+无状态的应用是最适合容器化的，当然有状态的应用也可以通过外部持久卷的方式存储运行时数据来实现这一原则。
+自包含原则  SELF-CONTAINMENT PRINCIPLE  容器作为一个黑盒环境，除了Linux内核外，应该不依赖于任何外部依赖。镜像应该打包了所有应用运行所需的库文件，语言环境等。
+运行时限制原则  RUNTIME CONFINEMENT PRINCIPLE  容器运行时所需的任何硬件资源，比如cpu,mem等，应该做好配额管理，包括使用量声明和实际使用限制。 这个原则主要是为了便于资源调度，弹性伸缩等。'><title>应用容器化改造的设计原则及模式</title>
+
+<link rel='canonical' href='http://tinohean.top/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/'>
+
+<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='应用容器化改造的设计原则及模式'>
+<meta property='og:description' content='应用容器化改造的设计原则及模式 前言 传统应用在应对流量突发等情况时需要一个完善的紧急响应机制，比如自动弹性伸缩。但由于软硬件限制，自动弹性伸缩在物理机上实现复杂。
+尽管kubernetes学习路线陡峭，复杂度高，但是考虑到成本和效率，推进应用进行容器化改造是一个收益率很高的事情。
+在经历数次微博流量飙升导致深夜紧急手动扩容后，我终于下定决心将两个核心应用迁移到容器上了。
+当然，并不是所有应用都适合容器化，传统应用进行容器化也需要进行一些适配性地改造。
+本文是我调研容器化的改造设计原则及模式的成果。
+设计原则 单一职责原则  SINGLE CONCERN PRINCIPLE 
+字面意识就是只做一件事，并把它做好。
+根据Docker最佳实践解释，一个容器应当仅包含一个进程。 此处的进程是指具有唯一父进程且可能拥有多个子进程的单个软件。
+目的是为了增加镜像的可复用性和可移植性，单父进程带来的相同的生命周期和状态也便于kubernetes管理。
+生产环境中不可避免会遇到一些例外。一些复杂的场景需要多个进程协调，此时可以使用边车模式（sidecar)解决。比如tomcat日志归集。
+高可观测性原则  HIGH OBSERVABILITY PRINCIPLE 
+容器的设计决定了它的不便观测性，一个运行中的容器对管理者来说是一个黑盒状态，因此不能像虚拟机一样随时TTY登陆查看容器内部的状态，包括进程的日志，进程的启动等。
+那么探针的设计就显得格外重要了。通过探针，kubernetes可以知晓容器的存活，服务就绪状态等。
+除了探针外，我们还需要设计日志接口和监控接口来对接Fluentd,Prometheus等工具进行日常操作，比如日志归集，指标监控等。
+总结下来，容器化的应用需要做好三类接口设计，以便于通过平台进行状态管理和维护：
+ 探针 日志 监控  生命周期符合性原则  LIFE-CYCLE CONFORMANCE PRINCIPLE 
+kubernetes这类平台为了方便管理容器的生命周期，会产生各种各样的events。这类事件主要是通过Linux信号进行传递,比如SIGTERM和SIGKILL。
+因此，在设计容器应用的时候，开发者需要对这类事件做出恰当的反应逻辑规划并保持符合性。比如进程能接受SIGTERM信号后优雅退出。
+镜像不变性原则  IMAGE IMMUTABILITY PRINCIPLE  镜像作为容器的运行基本,应该保持不变的。这样才有可能进行回滚和滚动发布，从而推动自动化。
+这个原则意味着什么呢？每次变更应该是重新构建一个镜像并应用于所有环境。
+对于一些不同的环境需求，比如开发环境，测试环境，可以通过外部存储runtime数据来进行区分。
+进程可弃型原则  PROCESS DISPOSABILITY PRINCIPLE  基于上面的镜像不变性原则，每次应用变更应该是重新构建，所以容器必须是随时可以销毁的。
+无状态的应用是最适合容器化的，当然有状态的应用也可以通过外部持久卷的方式存储运行时数据来实现这一原则。
+自包含原则  SELF-CONTAINMENT PRINCIPLE  容器作为一个黑盒环境，除了Linux内核外，应该不依赖于任何外部依赖。镜像应该打包了所有应用运行所需的库文件，语言环境等。
+运行时限制原则  RUNTIME CONFINEMENT PRINCIPLE  容器运行时所需的任何硬件资源，比如cpu,mem等，应该做好配额管理，包括使用量声明和实际使用限制。 这个原则主要是为了便于资源调度，弹性伸缩等。'>
+<meta property='og:url' content='http://tinohean.top/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='kubernetes' /><meta property='article:tag' content='容器' /><meta property='article:published_time' content='2019-05-15T19:24:26&#43;08:00'/><meta property='article:modified_time' content='2019-05-15T19:24:26&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/container.jpeg' />
+<meta name="twitter:title" content="应用容器化改造的设计原则及模式">
+<meta name="twitter:description" content="应用容器化改造的设计原则及模式 前言 传统应用在应对流量突发等情况时需要一个完善的紧急响应机制，比如自动弹性伸缩。但由于软硬件限制，自动弹性伸缩在物理机上实现复杂。
+尽管kubernetes学习路线陡峭，复杂度高，但是考虑到成本和效率，推进应用进行容器化改造是一个收益率很高的事情。
+在经历数次微博流量飙升导致深夜紧急手动扩容后，我终于下定决心将两个核心应用迁移到容器上了。
+当然，并不是所有应用都适合容器化，传统应用进行容器化也需要进行一些适配性地改造。
+本文是我调研容器化的改造设计原则及模式的成果。
+设计原则 单一职责原则  SINGLE CONCERN PRINCIPLE 
+字面意识就是只做一件事，并把它做好。
+根据Docker最佳实践解释，一个容器应当仅包含一个进程。 此处的进程是指具有唯一父进程且可能拥有多个子进程的单个软件。
+目的是为了增加镜像的可复用性和可移植性，单父进程带来的相同的生命周期和状态也便于kubernetes管理。
+生产环境中不可避免会遇到一些例外。一些复杂的场景需要多个进程协调，此时可以使用边车模式（sidecar)解决。比如tomcat日志归集。
+高可观测性原则  HIGH OBSERVABILITY PRINCIPLE 
+容器的设计决定了它的不便观测性，一个运行中的容器对管理者来说是一个黑盒状态，因此不能像虚拟机一样随时TTY登陆查看容器内部的状态，包括进程的日志，进程的启动等。
+那么探针的设计就显得格外重要了。通过探针，kubernetes可以知晓容器的存活，服务就绪状态等。
+除了探针外，我们还需要设计日志接口和监控接口来对接Fluentd,Prometheus等工具进行日常操作，比如日志归集，指标监控等。
+总结下来，容器化的应用需要做好三类接口设计，以便于通过平台进行状态管理和维护：
+ 探针 日志 监控  生命周期符合性原则  LIFE-CYCLE CONFORMANCE PRINCIPLE 
+kubernetes这类平台为了方便管理容器的生命周期，会产生各种各样的events。这类事件主要是通过Linux信号进行传递,比如SIGTERM和SIGKILL。
+因此，在设计容器应用的时候，开发者需要对这类事件做出恰当的反应逻辑规划并保持符合性。比如进程能接受SIGTERM信号后优雅退出。
+镜像不变性原则  IMAGE IMMUTABILITY PRINCIPLE  镜像作为容器的运行基本,应该保持不变的。这样才有可能进行回滚和滚动发布，从而推动自动化。
+这个原则意味着什么呢？每次变更应该是重新构建一个镜像并应用于所有环境。
+对于一些不同的环境需求，比如开发环境，测试环境，可以通过外部存储runtime数据来进行区分。
+进程可弃型原则  PROCESS DISPOSABILITY PRINCIPLE  基于上面的镜像不变性原则，每次应用变更应该是重新构建，所以容器必须是随时可以销毁的。
+无状态的应用是最适合容器化的，当然有状态的应用也可以通过外部持久卷的方式存储运行时数据来实现这一原则。
+自包含原则  SELF-CONTAINMENT PRINCIPLE  容器作为一个黑盒环境，除了Linux内核外，应该不依赖于任何外部依赖。镜像应该打包了所有应用运行所需的库文件，语言环境等。
+运行时限制原则  RUNTIME CONFINEMENT PRINCIPLE  容器运行时所需的任何硬件资源，比如cpu,mem等，应该做好配额管理，包括使用量声明和实际使用限制。 这个原则主要是为了便于资源调度，弹性伸缩等。"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/container.jpeg' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="http://tinohean.top" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>Back</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/">
+                <img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/container_hued08ec2480e5693b7d58c33103917ef1_43947_800x0_resize_q75_box.jpeg"
+                        srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/container_hued08ec2480e5693b7d58c33103917ef1_43947_800x0_resize_q75_box.jpeg 800w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/container_hued08ec2480e5693b7d58c33103917ef1_43947_1600x0_resize_q75_box.jpeg 1600w"
+                        width="800" 
+                        height="400" 
+                        loading="lazy"
+                        alt="Featured image of post 应用容器化改造的设计原则及模式" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/">应用容器化改造的设计原则及模式</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">May 15, 2019</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    1 min read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h1 id="应用容器化改造的设计原则及模式">应用容器化改造的设计原则及模式</h1>
+<h2 id="前言">前言</h2>
+<p>传统应用在应对流量突发等情况时需要一个完善的紧急响应机制，比如自动弹性伸缩。但由于软硬件限制，自动弹性伸缩在物理机上实现复杂。</p>
+<p>尽管kubernetes学习路线陡峭，复杂度高，但是考虑到成本和效率，推进应用进行容器化改造是一个收益率很高的事情。</p>
+<p>在经历数次微博流量飙升导致深夜紧急手动扩容后，我终于下定决心将两个核心应用迁移到容器上了。</p>
+<p>当然，并不是所有应用都适合容器化，传统应用进行容器化也需要进行一些适配性地改造。</p>
+<p>本文是我调研容器化的改造设计原则及模式的成果。</p>
+<h2 id="设计原则">设计原则</h2>
+<h3 id="单一职责原则">单一职责原则</h3>
+<p><figure style="flex-grow: 295; flex-basis: 709px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/single_concern.png" data-size="1295x438"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/single_concern.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/single_concern_hu9d318c39f78ae0e4112ba1064cd16cad_60719_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/single_concern_hu9d318c39f78ae0e4112ba1064cd16cad_60719_1024x0_resize_box_3.png 1024w"
+				width="1295"
+				height="438"
+				loading="lazy"
+				alt="SINGLE CONCERN PRINCIPLE">
+		</a>
+		
+		<figcaption>SINGLE CONCERN PRINCIPLE</figcaption>
+		
+	</figure><br>
+字面意识就是只做一件事，并把它做好。</p>
+<p>根据<a class="link" href="https://cloud.google.com/architecture/best-practices-for-building-containers"  target="_blank" rel="noopener"
+    >Docker最佳实践</a>解释，一个容器应当仅包含一个进程。
+此处的进程是指具有唯一父进程且可能拥有多个子进程的单个软件。</p>
+<p>目的是为了增加镜像的可复用性和可移植性，单父进程带来的相同的生命周期和状态也便于kubernetes管理。</p>
+<p>生产环境中不可避免会遇到一些例外。一些复杂的场景需要多个进程协调，此时可以使用边车模式（sidecar)解决。比如tomcat日志归集。</p>
+<h3 id="高可观测性原则">高可观测性原则</h3>
+<p><figure style="flex-grow: 292; flex-basis: 701px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/high_observability.png" data-size="1283x439"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/high_observability.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/high_observability_hu38bc03b143b97cc4757deb24ca0c5ab0_44869_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/high_observability_hu38bc03b143b97cc4757deb24ca0c5ab0_44869_1024x0_resize_box_3.png 1024w"
+				width="1283"
+				height="439"
+				loading="lazy"
+				alt="HIGH OBSERVABILITY PRINCIPLE">
+		</a>
+		
+		<figcaption>HIGH OBSERVABILITY PRINCIPLE</figcaption>
+		
+	</figure><br>
+容器的设计决定了它的不便观测性，一个运行中的容器对管理者来说是一个黑盒状态，因此不能像虚拟机一样随时TTY登陆查看容器内部的状态，包括进程的日志，进程的启动等。</p>
+<p>那么探针的设计就显得格外重要了。通过探针，kubernetes可以知晓容器的存活，服务就绪状态等。</p>
+<p>除了探针外，我们还需要设计日志接口和监控接口来对接Fluentd,Prometheus等工具进行日常操作，比如日志归集，指标监控等。</p>
+<p>总结下来，容器化的应用需要做好三类接口设计，以便于通过平台进行状态管理和维护：</p>
+<ul>
+<li>探针</li>
+<li>日志</li>
+<li>监控</li>
+</ul>
+<h3 id="生命周期符合性原则">生命周期符合性原则</h3>
+<p><figure style="flex-grow: 289; flex-basis: 695px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/lifecycle_conformance.png" data-size="1281x442"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/lifecycle_conformance.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/lifecycle_conformance_hu875cec29f8c204dce675e712c7adac95_37438_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/lifecycle_conformance_hu875cec29f8c204dce675e712c7adac95_37438_1024x0_resize_box_3.png 1024w"
+				width="1281"
+				height="442"
+				loading="lazy"
+				alt="LIFE-CYCLE CONFORMANCE PRINCIPLE">
+		</a>
+		
+		<figcaption>LIFE-CYCLE CONFORMANCE PRINCIPLE</figcaption>
+		
+	</figure><br>
+kubernetes这类平台为了方便管理容器的生命周期，会产生各种各样的events。这类事件主要是通过Linux信号进行传递,比如SIGTERM和SIGKILL。</p>
+<p>因此，在设计容器应用的时候，开发者需要对这类事件做出恰当的反应逻辑规划并保持符合性。比如进程能接受SIGTERM信号后优雅退出。</p>
+<h3 id="镜像不变性原则">镜像不变性原则</h3>
+<p><figure style="flex-grow: 261; flex-basis: 628px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/image_immutability.png" data-size="1105x422"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/image_immutability.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/image_immutability_hu20e8bff1822bd1a6c96f0f58e9879c26_31751_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/image_immutability_hu20e8bff1822bd1a6c96f0f58e9879c26_31751_1024x0_resize_box_3.png 1024w"
+				width="1105"
+				height="422"
+				loading="lazy"
+				alt="IMAGE IMMUTABILITY PRINCIPLE">
+		</a>
+		
+		<figcaption>IMAGE IMMUTABILITY PRINCIPLE</figcaption>
+		
+	</figure>
+镜像作为容器的运行基本,应该保持不变的。这样才有可能进行回滚和滚动发布，从而推动自动化。</p>
+<p>这个原则意味着什么呢？每次变更应该是重新构建一个镜像并应用于所有环境。</p>
+<p>对于一些不同的环境需求，比如开发环境，测试环境，可以通过外部存储runtime数据来进行区分。</p>
+<h3 id="进程可弃型原则">进程可弃型原则</h3>
+<p><figure style="flex-grow: 302; flex-basis: 726px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/process_disposability.png" data-size="1114x368"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/process_disposability.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/process_disposability_hu4b390c1d5861f6bec9cf084a355f334c_23726_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/process_disposability_hu4b390c1d5861f6bec9cf084a355f334c_23726_1024x0_resize_box_3.png 1024w"
+				width="1114"
+				height="368"
+				loading="lazy"
+				alt="PROCESS DISPOSABILITY PRINCIPLE">
+		</a>
+		
+		<figcaption>PROCESS DISPOSABILITY PRINCIPLE</figcaption>
+		
+	</figure>
+基于上面的镜像不变性原则，每次应用变更应该是重新构建，所以容器必须是随时可以销毁的。</p>
+<p>无状态的应用是最适合容器化的，当然有状态的应用也可以通过外部持久卷的方式存储运行时数据来实现这一原则。</p>
+<h3 id="自包含原则">自包含原则</h3>
+<p><figure style="flex-grow: 186; flex-basis: 447px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/self_containment.png" data-size="950x509"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/self_containment.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/self_containment_hu26c1e5d1e5d660b4d18858e9bd86daf1_43715_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/self_containment_hu26c1e5d1e5d660b4d18858e9bd86daf1_43715_1024x0_resize_box_3.png 1024w"
+				width="950"
+				height="509"
+				loading="lazy"
+				alt="SELF-CONTAINMENT PRINCIPLE">
+		</a>
+		
+		<figcaption>SELF-CONTAINMENT PRINCIPLE</figcaption>
+		
+	</figure>
+容器作为一个黑盒环境，除了Linux内核外，应该不依赖于任何外部依赖。镜像应该打包了所有应用运行所需的库文件，语言环境等。</p>
+<h3 id="运行时限制原则">运行时限制原则</h3>
+<p><figure style="flex-grow: 243; flex-basis: 584px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/runtime_confinement.png" data-size="1121x460"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/runtime_confinement.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/runtime_confinement_hua3606ee367e36ac258807a9bda836497_38660_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/runtime_confinement_hua3606ee367e36ac258807a9bda836497_38660_1024x0_resize_box_3.png 1024w"
+				width="1121"
+				height="460"
+				loading="lazy"
+				alt="RUNTIME CONFINEMENT PRINCIPLE">
+		</a>
+		
+		<figcaption>RUNTIME CONFINEMENT PRINCIPLE</figcaption>
+		
+	</figure>
+容器运行时所需的任何硬件资源，比如cpu,mem等，应该做好配额管理，包括使用量声明和实际使用限制。
+这个原则主要是为了便于资源调度，弹性伸缩等。</p>
+<h2 id="设计模式">设计模式</h2>
+<p>Pod是kubernetes的基本执行单元，封装了应用程序容器、存储资源、唯一网络IP、控制选项等，由单个容器或者多个强耦合共享资源的容器组成。</p>
+<p>这些容器集合共享一个network，特定namespace,volume,已经声明的spec规范，并存于同一个node上</p>
+<ul>
+<li>PID命名空间：Pod中的不同应用程序可以看到其他应用程序的进程ID；</li>
+<li>网络命名空间：Pod中的多个容器能够访问同一个IP和端口范围；可以通过localhost通信；</li>
+<li>IPC命名空间：Pod中的多个容器能够使用SystemV IPC或POSIX消息队列进行通信；</li>
+<li>UTS命名空间：Pod中的多个容器共享一个主机名；</li>
+<li>Volumes（共享存储卷）：Pod中的各个容器可以访问在Pod级别定义的Volumes；</li>
+</ul>
+<p>Pod中容器是怎么设计安排的，也有一定的模式遵循。</p>
+<h3 id="单容器模式">单容器模式</h3>
+<p>单容器模式是最简单的一种，遵循上文所述的七种设计原则，开放日志接口，监控接口，生命周期管理。</p>
+<h3 id="单节点多容器模式">单节点多容器模式</h3>
+<p>有一些普遍存在的场景中，单容器模式由于遵守单一职责原则，无法满足所有需求。此时，可以采用多容器模式，在同一个Pod中运行多个容器，通过共享Volume，命名空间，网络等实现。</p>
+<h4 id="sidecar">Sidecar</h4>
+<p><figure style="flex-grow: 162; flex-basis: 389px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/sidecar.png" data-size="770x474"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/sidecar.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/sidecar_hu3f12e7932b5a60683978dcac5eef6309_58450_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/sidecar_hu3f12e7932b5a60683978dcac5eef6309_58450_1024x0_resize_box_3.png 1024w"
+				width="770"
+				height="474"
+				loading="lazy"
+				alt="Sidecar">
+		</a>
+		
+		<figcaption>Sidecar</figcaption>
+		
+	</figure>
+边车模式是最为常见的单节点多容器模式。比较常见的一种应用就是web服务附加一个用于日志归集的边车容器，因为共享Volume，所以实现简单。</p>
+<p>除此之外，边车模式还可以作为主程序的配置，服务代理等。</p>
+<h4 id="ambassador">Ambassador</h4>
+<p><figure style="flex-grow: 205; flex-basis: 494px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/ambassador.png" data-size="762x370"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/ambassador.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/ambassador_hu5f615060748a23fe43ae199219479da2_45926_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/ambassador_hu5f615060748a23fe43ae199219479da2_45926_1024x0_resize_box_3.png 1024w"
+				width="762"
+				height="370"
+				loading="lazy"
+				alt="Ambassador">
+		</a>
+		
+		<figcaption>Ambassador</figcaption>
+		
+	</figure>
+大使模式类似于一个Proxy,代理了主容器和外部之间的网络通信。好处是开发者只需要关注于核心业务逻辑，不需要操心复杂的网络交互。</p>
+<p>这个模式并不怎么常用。</p>
+<h4 id="adapter">Adapter</h4>
+<p><figure style="flex-grow: 276; flex-basis: 663px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/adapter.png" data-size="542x196"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/adapter.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/adapter_hu29c20fb19d2aaa59a3207076dda60f90_20268_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/adapter_hu29c20fb19d2aaa59a3207076dda60f90_20268_1024x0_resize_box_3.png 1024w"
+				width="542"
+				height="196"
+				loading="lazy"
+				alt="Adapter">
+		</a>
+		
+		<figcaption>Adapter</figcaption>
+		
+	</figure>
+大使模式的意义在于简化与外界的交互。而适配器模式的核心在于把容器内部所有需要与外界交互的接口标准化并暴露出来。常见的使用场景时日志接口，监控接口。</p>
+<p>举个例子，对于监控接口来说，外界可能的方案包括zabbix,prometheus等，适配器模式的功能就是根据不同的方案输出对应格式的数据。</p>
+<p>说到这里可能会存在一些疑惑，为什么开发者不把这些接口的规约定义在程序里？其实，适配器模式主要是为了一些开源程序或者非自研程序设计的，这样开发者就不需要更改源程序进行二次开发。</p>
+<h3 id="多节点模式">多节点模式</h3>
+<p>分布式的应用需要模块化的设计，多容器之间的彼此协调。</p>
+<h4 id="leader-election">Leader Election</h4>
+<p>对于分布式系统来说，最为常见的问题就是选举。这类应用通常需要一个Leader，而其他副本则作为备选和选举者，当Leader节点挂掉后，需要通过其他副本选举出一个新的Leader。</p>
+<p>通过编程实现的选举一般来说逻辑复杂，实现困难。这时候可以把选举逻辑剥离出来成为选举专属容器，由更专业的工程师负责，共同调度。应用开发者只需要关注核心逻辑即可。</p>
+<h4 id="worker-queue">Worker Queue</h4>
+<p><figure style="flex-grow: 105; flex-basis: 252px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/worker_queue.png" data-size="754x716"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/worker_queue.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/worker_queue_hub98b2c9ef8822620d99096efdd2bf069_109827_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/worker_queue_hub98b2c9ef8822620d99096efdd2bf069_109827_1024x0_resize_box_3.png 1024w"
+				width="754"
+				height="716"
+				loading="lazy"
+				alt="Worker Queue">
+		</a>
+		
+		<figcaption>Worker Queue</figcaption>
+		
+	</figure>
+传统的队列模式依靠一些成熟的框架，比如hadoop，但也受限于语言环境和框架实现本身。</p>
+<p>容器针对run()和 mount()接口的实现，可以把实现通用的工作队列变得更为简单直接，可以把任何的代码打包成容器，与任意数据构建成一个完整的工作队列系统。</p>
+<h4 id="scattergather">Scatter/Gather</h4>
+<p><figure style="flex-grow: 108; flex-basis: 261px">
+		<a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/scatter_gather.png" data-size="754x692"><img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/scatter_gather.png"
+				srcset="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/scatter_gather_hu10cbf611160058d00da5575347c3f58f_87664_480x0_resize_box_3.png 480w, /p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/scatter_gather_hu10cbf611160058d00da5575347c3f58f_87664_1024x0_resize_box_3.png 1024w"
+				width="754"
+				height="692"
+				loading="lazy"
+				alt="Scatter Gather">
+		</a>
+		
+		<figcaption>Scatter Gather</figcaption>
+		
+	</figure>
+分散/收集模式中，根节点接受初始请求，然后把请求分发给大量子节点进行并行计算。每个节点均返回部分数据，根节点把这些数据收集到原始请求的单个相应中。</p>
+<p>实现分散/收集系统，用户需要提供两类容器。首先，一类容器实现叶子节点计算，这个容器执行部分计算并返回相应的结果。
+第二种容器是合并容器，这个容器需要汇总所有叶子容器的计算结果，并组织成一个单一的响应后输出。</p>
+<h2 id="容器化改造方法">容器化改造方法</h2>
+<p>以下是我针对容器化列出的一些改造点，仅供参考。</p>
+<ul>
+<li>探针开发<br>
+主要包括健康探针和就绪探针。健康探针用于心跳存活监控，就绪探针用于deployment获取Pod健康状况，ready后再分发流量请求。</li>
+<li>目录改造<br>
+主要是去掉了强目录依赖，更新为相对目录。这其实是之前项目的陋习，一直依靠标准化部署手册来维护。还有就是趁机精简了下目录结构。</li>
+<li>配置分离<br>
+主要的配置文件通过configmap实现，从主代码库分离。</li>
+<li>定时任务<br>
+一些额外的定时任务通过边车模式实现。k8s原生的cronjob无法实现deamonset类的机制，只能实现单节点。可以自定义死循环程序实现。</li>
+<li>监控及日志收集<br>
+原fluent-bit和prometheus的各类exporter都已经全部deamonset化,其配置文件也均由configmap托管。</li>
+<li>灰度发布<br>
+通过建立多个deployment，匹配不同的标签实现。</li>
+<li>启停方式<br>
+容器化后没有reload概念了。每次配置更新都是重建的过程，因此，去除了没意义的生命周期管理脚本。</li>
+<li>功能拆分<br>
+原应用依赖定期更新的IP库，本次容器化将IP库解析拆分成微服务，很大程度上精简了镜像大小。</li>
+</ul>
+<h2 id="参考文档">参考文档</h2>
+<ol>
+<li><a class="link" href="https://www.redhat.com/en/resources/cloud-native-container-design-whitepaper"  target="_blank" rel="noopener"
+    >https://www.redhat.com/en/resources/cloud-native-container-design-whitepaper</a></li>
+<li><a class="link" href="https://my.oschina.net/taogang/blog/1809904"  target="_blank" rel="noopener"
+    >https://my.oschina.net/taogang/blog/1809904</a></li>
+<li><a class="link" href="https://kubernetes.io/blog/2018/03/principles-of-container-app-design/"  target="_blank" rel="noopener"
+    >https://kubernetes.io/blog/2018/03/principles-of-container-app-design/</a></li>
+<li><a class="link" href="https://kubernetes.io/blog/2015/06/the-distributed-system-toolkit-patterns/"  target="_blank" rel="noopener"
+    >https://kubernetes.io/blog/2015/06/the-distributed-system-toolkit-patterns/</a></li>
+<li><a class="link" href="https://static.googleusercontent.com/media/research.google.com/zh-CN//pubs/archive/45406.pdf"  target="_blank" rel="noopener"
+    >https://static.googleusercontent.com/media/research.google.com/zh-CN//pubs/archive/45406.pdf</a></li>
+</ol>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/kubernetes/">kubernetes</a>
+        
+            <a href="/tags/%E5%AE%B9%E5%99%A8/">容器</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">部署策略及容器化实现</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/">
+        
+        
+            <div class="article-image">
+                <img src="/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/cmd.3a98d9a5eb6c40084d7f8312c61175d1_hu6e16d3621c69d4baadb7f1b7e4fbf505_28691_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-OpjZpetsQAhNf4MSxhF10Q==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">CMD和ENTRYPOINT的配置比对详解</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/">
+        
+        
+            <div class="article-image">
+                <img src="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/kubernetes.2eb79f17c6a735a5fe774ce6e26a1c69_hub6bed6b994a2e4811d8630d5db2ab610_722818_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-LrefF8anNaX&#43;d0zm4mocaQ==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Kubeadm部署kubernetes集群</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%B5%85%E8%B0%88chatops/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%B5%85%E8%B0%88chatops/chatops.047fdca1683487486942824c5121858c_hu2af93606f657e048f3b8c35cecf8603a_39849_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-BH/coWg0h0hpQoJMUSGFjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">浅谈ChatOps</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/paddle.f9980b85e5d47359ccd6cefec98ae32a_hu5438825b9b6d1014226d20d231e650c2_191045_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-&#43;ZgLheXUc1nM1s7&#43;yYrjKg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Paddle飞桨部署方案</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+     
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2021 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">Table of contents</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#设计原则">设计原则</a>
+      <ol>
+        <li><a href="#单一职责原则">单一职责原则</a></li>
+        <li><a href="#高可观测性原则">高可观测性原则</a></li>
+        <li><a href="#生命周期符合性原则">生命周期符合性原则</a></li>
+        <li><a href="#镜像不变性原则">镜像不变性原则</a></li>
+        <li><a href="#进程可弃型原则">进程可弃型原则</a></li>
+        <li><a href="#自包含原则">自包含原则</a></li>
+        <li><a href="#运行时限制原则">运行时限制原则</a></li>
+      </ol>
+    </li>
+    <li><a href="#设计模式">设计模式</a>
+      <ol>
+        <li><a href="#单容器模式">单容器模式</a></li>
+        <li><a href="#单节点多容器模式">单节点多容器模式</a>
+          <ol>
+            <li><a href="#sidecar">Sidecar</a></li>
+            <li><a href="#ambassador">Ambassador</a></li>
+            <li><a href="#adapter">Adapter</a></li>
+          </ol>
+        </li>
+        <li><a href="#多节点模式">多节点模式</a>
+          <ol>
+            <li><a href="#leader-election">Leader Election</a></li>
+            <li><a href="#worker-queue">Worker Queue</a></li>
+            <li><a href="#scattergather">Scatter/Gather</a></li>
+          </ol>
+        </li>
+      </ol>
+    </li>
+    <li><a href="#容器化改造方法">容器化改造方法</a></li>
+    <li><a href="#参考文档">参考文档</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

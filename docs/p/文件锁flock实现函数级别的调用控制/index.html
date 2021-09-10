@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='需求场景 有一个python上线部署脚本，兼具重启和健康检查功能，当上线重启的时候希望定时任务的健康检查不要触发任何重启操作。
+同时，如果执行重启的时候碰到正在例行的健康检查，等待，直到健康检查结束。
+即: 当一个脚本被多次调用时（非多线程），使用flock控制其内同一个函数的调用控制。
+由于是多进程，线程锁是无效的，简单的使用python的fcntl模块的文件锁可以实现这个需求
+关于文件锁 linux内核提供的一种进程之间资源防竞争机制。防止多进程间使用同一个共享资源时同时操作造成错乱。
+鉴于linux中一切皆文件，所以文件锁有很多使用的空间。
+锁分为劝告锁和强制锁。劝告锁只是一个非强制的约定规则，即可以不遵守。所以需要不同进程间约定协调。而强制锁则由内核进行强制约束。
+此外，两种锁都可以有共享和排他的分类，分别是共享锁（读锁）和排他锁（写锁）
+ 共享锁:
+我在它身上上了一把锁，你也可以过来读取它 排他锁:
+我在它身上上了一把锁，我要写东西进去，这期间你不能读也不能写  关于两种锁的不同进程间的兼容关系
+     进程B共享锁 进程B排他锁     进程A锁     无 是 是   共享锁 是 否   排他锁 否 否    强制锁由内核进行强制约束，当文件加有共享锁后，其他进程对文件对写操作会被内核阻止，当文件加有排他锁后，其他进程任何操作都会被阻止塞。阻止包括是堵塞-等待，非堵塞-立刻返回错误信号EAGAIN。
+详细如下表
+   当前锁 堵塞读 堵塞写 非堵塞读 非堵塞写     共享锁 正常读 堵塞 正常读 EAGAIN   排他锁 堵塞 堵塞 EAGAIN EAGAIN    注意：'><title>文件锁flock实现函数级别的调用控制</title>
+
+<link rel='canonical' href='http://tinohean.top/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/'>
+
+<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='文件锁flock实现函数级别的调用控制'>
+<meta property='og:description' content='需求场景 有一个python上线部署脚本，兼具重启和健康检查功能，当上线重启的时候希望定时任务的健康检查不要触发任何重启操作。
+同时，如果执行重启的时候碰到正在例行的健康检查，等待，直到健康检查结束。
+即: 当一个脚本被多次调用时（非多线程），使用flock控制其内同一个函数的调用控制。
+由于是多进程，线程锁是无效的，简单的使用python的fcntl模块的文件锁可以实现这个需求
+关于文件锁 linux内核提供的一种进程之间资源防竞争机制。防止多进程间使用同一个共享资源时同时操作造成错乱。
+鉴于linux中一切皆文件，所以文件锁有很多使用的空间。
+锁分为劝告锁和强制锁。劝告锁只是一个非强制的约定规则，即可以不遵守。所以需要不同进程间约定协调。而强制锁则由内核进行强制约束。
+此外，两种锁都可以有共享和排他的分类，分别是共享锁（读锁）和排他锁（写锁）
+ 共享锁:
+我在它身上上了一把锁，你也可以过来读取它 排他锁:
+我在它身上上了一把锁，我要写东西进去，这期间你不能读也不能写  关于两种锁的不同进程间的兼容关系
+     进程B共享锁 进程B排他锁     进程A锁     无 是 是   共享锁 是 否   排他锁 否 否    强制锁由内核进行强制约束，当文件加有共享锁后，其他进程对文件对写操作会被内核阻止，当文件加有排他锁后，其他进程任何操作都会被阻止塞。阻止包括是堵塞-等待，非堵塞-立刻返回错误信号EAGAIN。
+详细如下表
+   当前锁 堵塞读 堵塞写 非堵塞读 非堵塞写     共享锁 正常读 堵塞 正常读 EAGAIN   排他锁 堵塞 堵塞 EAGAIN EAGAIN    注意：'>
+<meta property='og:url' content='http://tinohean.top/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='linux' /><meta property='article:published_time' content='2017-04-13T21:01:45&#43;08:00'/><meta property='article:modified_time' content='2017-04-13T21:01:45&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/flock.jpeg' />
+<meta name="twitter:title" content="文件锁flock实现函数级别的调用控制">
+<meta name="twitter:description" content="需求场景 有一个python上线部署脚本，兼具重启和健康检查功能，当上线重启的时候希望定时任务的健康检查不要触发任何重启操作。
+同时，如果执行重启的时候碰到正在例行的健康检查，等待，直到健康检查结束。
+即: 当一个脚本被多次调用时（非多线程），使用flock控制其内同一个函数的调用控制。
+由于是多进程，线程锁是无效的，简单的使用python的fcntl模块的文件锁可以实现这个需求
+关于文件锁 linux内核提供的一种进程之间资源防竞争机制。防止多进程间使用同一个共享资源时同时操作造成错乱。
+鉴于linux中一切皆文件，所以文件锁有很多使用的空间。
+锁分为劝告锁和强制锁。劝告锁只是一个非强制的约定规则，即可以不遵守。所以需要不同进程间约定协调。而强制锁则由内核进行强制约束。
+此外，两种锁都可以有共享和排他的分类，分别是共享锁（读锁）和排他锁（写锁）
+ 共享锁:
+我在它身上上了一把锁，你也可以过来读取它 排他锁:
+我在它身上上了一把锁，我要写东西进去，这期间你不能读也不能写  关于两种锁的不同进程间的兼容关系
+     进程B共享锁 进程B排他锁     进程A锁     无 是 是   共享锁 是 否   排他锁 否 否    强制锁由内核进行强制约束，当文件加有共享锁后，其他进程对文件对写操作会被内核阻止，当文件加有排他锁后，其他进程任何操作都会被阻止塞。阻止包括是堵塞-等待，非堵塞-立刻返回错误信号EAGAIN。
+详细如下表
+   当前锁 堵塞读 堵塞写 非堵塞读 非堵塞写     共享锁 正常读 堵塞 正常读 EAGAIN   排他锁 堵塞 堵塞 EAGAIN EAGAIN    注意："><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/flock.jpeg' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="http://tinohean.top" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>Back</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/">
+                <img src="/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/flock_huaea571c15354d96edc7109bd2ba7d9dc_422973_800x0_resize_q75_box.jpeg"
+                        srcset="/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/flock_huaea571c15354d96edc7109bd2ba7d9dc_422973_800x0_resize_q75_box.jpeg 800w, /p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/flock_huaea571c15354d96edc7109bd2ba7d9dc_422973_1600x0_resize_q75_box.jpeg 1600w"
+                        width="800" 
+                        height="364" 
+                        loading="lazy"
+                        alt="Featured image of post 文件锁flock实现函数级别的调用控制" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/%E6%96%87%E4%BB%B6%E9%94%81flock%E5%AE%9E%E7%8E%B0%E5%87%BD%E6%95%B0%E7%BA%A7%E5%88%AB%E7%9A%84%E8%B0%83%E7%94%A8%E6%8E%A7%E5%88%B6/">文件锁flock实现函数级别的调用控制</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Apr 13, 2017</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    2 min read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h2 id="需求场景">需求场景</h2>
+<p>有一个python上线部署脚本，兼具重启和健康检查功能，当上线重启的时候希望定时任务的健康检查不要触发任何重启操作。</p>
+<p>同时，如果执行重启的时候碰到正在例行的健康检查，等待，直到健康检查结束。</p>
+<p>即: 当一个脚本被多次调用时（非多线程），使用flock控制其内同一个函数的调用控制。</p>
+<p>由于是多进程，线程锁是无效的，简单的使用python的fcntl模块的文件锁可以实现这个需求</p>
+<h2 id="关于文件锁">关于文件锁</h2>
+<p>linux内核提供的一种进程之间资源防竞争机制。防止多进程间使用同一个共享资源时同时操作造成错乱。<br>
+鉴于linux中一切皆文件，所以文件锁有很多使用的空间。</p>
+<p>锁分为劝告锁和强制锁。劝告锁只是一个非强制的约定规则，即可以不遵守。所以需要不同进程间约定协调。而强制锁则由内核进行强制约束。</p>
+<p>此外，两种锁都可以有共享和排他的分类，分别是共享锁（读锁）和排他锁（写锁）</p>
+<ul>
+<li>共享锁:<br>
+我在它身上上了一把锁，你也可以过来读取它</li>
+<li>排他锁:<br>
+我在它身上上了一把锁，我要写东西进去，这期间你不能读也不能写</li>
+</ul>
+<p>关于两种锁的不同进程间的兼容关系</p>
+<table>
+<thead>
+<tr>
+<th>  </th>
+<th>进程B共享锁</th>
+<th>进程B排他锁</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>进程A锁</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>无</td>
+<td>是</td>
+<td>是</td>
+</tr>
+<tr>
+<td>共享锁</td>
+<td>是</td>
+<td>否</td>
+</tr>
+<tr>
+<td>排他锁</td>
+<td>否</td>
+<td>否</td>
+</tr>
+</tbody>
+</table>
+<p>强制锁由内核进行强制约束，当文件加有共享锁后，其他进程对文件对写操作会被内核阻止，当文件加有排他锁后，其他进程任何操作都会被阻止塞。阻止包括是堵塞-等待，非堵塞-立刻返回错误信号EAGAIN。</p>
+<p>详细如下表</p>
+<table>
+<thead>
+<tr>
+<th>当前锁</th>
+<th>堵塞读</th>
+<th>堵塞写</th>
+<th>非堵塞读</th>
+<th>非堵塞写</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>共享锁</td>
+<td>正常读</td>
+<td>堵塞</td>
+<td>正常读</td>
+<td>EAGAIN</td>
+</tr>
+<tr>
+<td>排他锁</td>
+<td>堵塞</td>
+<td>堵塞</td>
+<td>EAGAIN</td>
+<td>EAGAIN</td>
+</tr>
+</tbody>
+</table>
+<p>注意：</p>
+<ol>
+<li>一个进程可以对同一文件同时上共享锁和排他锁</li>
+<li>劝告锁只有劝告作用，需要进程间自我约束协调</li>
+<li>强制锁后的阻止包括堵塞和非堵塞，堵塞会持续等待直到锁解除，非堵塞则会直接返回错误信号并退出</li>
+</ol>
+<h2 id="shell的flock命令">shell的flock命令</h2>
+<p>shell提供了flock命令实现文件锁。flock只可以添加劝告锁，并且只能针对整个文件进行加锁，无法对文件的部分进行加锁。</p>
+<h3 id="flock对强制锁的实现">flock对强制锁的实现</h3>
+<p>进程A调用了flock对文件t.txt加LOCK.EX的前提下，进程B对t.txt的访问情况</p>
+<table>
+<thead>
+<tr>
+<th>进程B</th>
+<th>访问情况</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>直接访问t.txt</td>
+<td>可以访问</td>
+</tr>
+<tr>
+<td>先调用flock加锁，再访问t.txt</td>
+<td>不可访问</td>
+</tr>
+</tbody>
+</table>
+<p>也就是说，<strong>具体使用的时候不同进程必须先调用flock加锁实现强制锁的功能</strong>。</p>
+<p>flock的参数</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">Usage:
+ flock <span class="o">[</span>-sxun<span class="o">][</span>-w <span class="c1">#] fd#   #第一种模式直接对文件描述符加锁，解锁。其实当程序执行完毕，文件描述符自动关闭后锁也会自动施放</span>
+ flock <span class="o">[</span>-sxon<span class="o">][</span>-w <span class="c1">#] file [-c] command...   #第二种模式先对文件加锁，然后执行命令</span>
+ flock <span class="o">[</span>-sxon<span class="o">][</span>-w <span class="c1">#] directory [-c] command... #第三种模式先对目录加锁，然后执行命令</span>
+
+Options:
+ -s  --shared     Get a shared lock <span class="c1"># 共享锁</span>
+ -x  --exclusive  Get an exclusive lock <span class="c1">#排他锁</span>
+ -u  --unlock     Remove a lock  <span class="c1"># 解锁</span>
+ -n  --nonblock   Fail rather than <span class="nb">wait</span>  <span class="c1"># 非堵塞，直接报错</span>
+ -w  --timeout    Wait <span class="k">for</span> a limited amount of <span class="nb">time</span>  <span class="c1">#堵塞，等待时间</span>
+ -o  --close      Close file descriptor before running <span class="nb">command</span> <span class="c1">#第二/三种模式下先关闭文件描述符，再执行命令</span>
+ -c  --command    Run a single <span class="nb">command</span> string through the shell <span class="c1">#加锁后执行的shell命令</span>
+ -h  --help       Display this text <span class="c1">#显示帮助</span>
+ -V  --version    Display version <span class="c1"># 显示版本信息</span>
+</code></pre></div><p>两种使用例子：<br>
+shell scripts:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="cp">#!/bin/bash  
+</span><span class="cp"></span><span class="c1">#/opt/test.sh</span>
+<span class="o">(</span>  
+    flock -xn <span class="m">110</span> <span class="o">&amp;&amp;</span> <span class="nb">echo</span> success <span class="o">||</span> <span class="nb">echo</span> failed <span class="p">;</span>
+<span class="o">)</span> 110&gt;/tmp.lock
+</code></pre></div><p>crontab：</p>
+<pre><code>* * * * * flock -xn /tmp/crontab.lock -c 'bash /opt/test.sh'  
+</code></pre><p>前者封装在脚本里需要判断flock的执行结果$?,然后根据执行结果判断下一步操作。<br>
+crontab中可以利用flock的-c参数，加锁成功才会执行-c后面的cmd。</p>
+<h2 id="python的fcntl模块">python的fcntl模块</h2>
+<p>fcntl模块的flock()跟shell的flock类似，是对unix系统flock()的封装。只是无法实现等待时间(flock -w)的操作。堵塞状态下会一直等待下去，非堵塞状态会抛出OSError异常。<br>
+lockf()是对unix系统fcntl()的封装，不仅仅能实现对文件整体的lock，还能实现对指定文件位置的lock。</p>
+<p>看下文档中对于flock()几种锁的介绍</p>
+<pre><code>man 2 flock
+</code></pre><pre><code>FLOCK(2)                                                                       Linux Programmer's Manual                                                                      FLOCK(2)
+
+NAME
+       flock - apply or remove an advisory lock on an open file
+
+SYNOPSIS
+       #include &lt;sys/file.h&gt;
+
+       int flock(int fd, int operation);
+
+DESCRIPTION
+       Apply or remove an advisory lock on the open file specified by fd.  The argument operation is one of the following:
+
+           LOCK_SH  Place a shared lock.  More than one process may hold a shared lock for a given file at a given time.
+
+           LOCK_EX  Place an exclusive lock.  Only one process may hold an exclusive lock for a given file at a given time.
+
+           LOCK_UN  Remove an existing lock held by this process.
+
+       A call to flock() may block if an incompatible lock is held by another process.  To make a nonblocking request, include LOCK_NB (by ORing) with any of the above operations.
+
+       A single file may not simultaneously have both shared and exclusive locks.
+</code></pre><p>其中提及三种锁操作，LOCK_SH，LOCK_EX，LOCK_UN，分别是共享锁，排他锁，解锁。同时LOCK_NB是非堵塞机制，可以与共享锁或者排他锁共存配置</p>
+<p>与shell类似，python使用文件锁可以很容易实现对文件的控制。文章前面需求背景中实现对脚本上线和健康检查的两个使用场景下重启方法的调用控制就是通过文件锁的方式实现的。</p>
+<p>示例伪代码</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># _*_ coding: utf-8 _*_</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">subprocess</span> <span class="kn">import</span> <span class="n">call</span>
+<span class="kn">import</span> <span class="nn">fcntl</span>
+
+<span class="o">...</span>
+
+<span class="k">def</span> <span class="nf">do_stop_start</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">tag</span> <span class="o">==</span> <span class="s2">&#34;kill&#34;</span><span class="p">:</span>
+        <span class="n">do_cmd</span> <span class="o">=</span> <span class="n">kill_cmd</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">do_cmd</span> <span class="o">=</span> <span class="n">start_cmd</span>
+
+    <span class="k">for</span> <span class="n">cmd</span> <span class="ow">in</span> <span class="n">do_cmd</span><span class="p">:</span>
+
+        <span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span><span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="o">...</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&#34;__main__&#34;</span><span class="p">:</span>
+
+
+    <span class="c1">#get FD of lock_file</span>
+    <span class="n">deploy_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&#34;/tmp/.lock&#34;</span><span class="p">,</span><span class="s2">&#34;r&#34;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&#34;health&#34;</span><span class="p">:</span>
+        <span class="n">fcntl</span><span class="o">.</span><span class="n">flock</span><span class="p">(</span><span class="n">deploy_file</span><span class="p">,</span><span class="n">fcntl</span><span class="o">.</span><span class="n">LOCK_EX</span><span class="o">|</span><span class="n">fcntl</span><span class="o">.</span><span class="n">LOCK_NB</span><span class="p">)</span>
+        <span class="o">...</span>
+        <span class="n">do_stop_start</span><span class="p">(</span><span class="s2">&#34;start&#34;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fcntl</span><span class="o">.</span><span class="n">flock</span><span class="p">(</span><span class="n">deploy_file</span><span class="p">,</span><span class="n">fcntl</span><span class="o">.</span><span class="n">LOCK_EX</span><span class="p">)</span>
+        <span class="o">...</span>
+        <span class="n">do_stop_start</span><span class="p">(</span><span class="s2">&#34;stop&#34;</span><span class="p">)</span>
+        <span class="n">do_stop_start</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">)</span>
+
+    <span class="o">...</span>
+    
+    <span class="n">fcntl</span><span class="o">.</span><span class="n">flock</span><span class="p">(</span><span class="n">deploy_file</span><span class="p">,</span><span class="n">fcntl</span><span class="o">.</span><span class="n">LOCK_UN</span><span class="p">)</span>
+
+    <span class="n">deploy_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    
+
+</code></pre></div><p>这样脚本执行上线部署的时候，会尝试添加一个排他锁，而如果此前已经有健康检查执行的话，文件已经加了排他锁，脚本会直接进入堵塞状态，等待健康检查完成，再进行进程重启操作。</p>
+<p>同样，如果健康检查执行之前，已经有上线部署，此时健康检查想给文件添加一个排他锁和非堵塞锁，由于此前上线部署已经加了排他锁，上锁失败，同时是非堵塞锁，直接抛出异常退出。</p>
+<hr>
+<p>参考文档</p>
+<p><a class="link" href="https://docs.python.org/3/library/fcntl.html#module-fcntl"  target="_blank" rel="noopener"
+    >https://docs.python.org/3/library/fcntl.html#module-fcntl</a></p>
+<p><a class="link" href="https://www.ibm.com/developerworks/cn/linux/l-cn-filelock/"  target="_blank" rel="noopener"
+    >https://www.ibm.com/developerworks/cn/linux/l-cn-filelock/</a></p>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/linux/">linux</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%B5%85%E8%B0%88chatops/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%B5%85%E8%B0%88chatops/chatops.047fdca1683487486942824c5121858c_hu2af93606f657e048f3b8c35cecf8603a_39849_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-BH/coWg0h0hpQoJMUSGFjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">浅谈ChatOps</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/paddle.f9980b85e5d47359ccd6cefec98ae32a_hu5438825b9b6d1014226d20d231e650c2_191045_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-&#43;ZgLheXUc1nM1s7&#43;yYrjKg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Paddle飞桨部署方案</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/soul/">
+        
+        
+            <div class="article-image">
+                <img src="/p/soul/soul.1ec3d9ceed2b95e92d1a2f57a754173e_hua5b7a4101002ac3de8aa87e6c8d8ffa6_107809_250x150_fill_q75_box_smart1.JPG" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-HsPZzu0rlektGi9Xp1QXPg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Soul</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/">
+        
+        
+            <div class="article-image">
+                <img src="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/prometheus.e68ccd07f88822501da63f6d6434fab2_hu29c20fb19d2aaa59a3207076dda60f90_67350_250x150_fill_q75_box_smart1.jpg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-5ozNB/iIIlAdpj9tZDT6sg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Prometheus常用Exporter及告警规则</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/nitendo-switch%E6%B8%B8%E6%88%8F%E6%B8%85%E5%8D%95%E4%B8%8D%E5%AE%9A%E6%9C%9F%E6%9B%B4%E6%96%B0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/nitendo-switch%E6%B8%B8%E6%88%8F%E6%B8%85%E5%8D%95%E4%B8%8D%E5%AE%9A%E6%9C%9F%E6%9B%B4%E6%96%B0/hollow_knight.f80d8420356db4decdc1b1bbcd854964_hue5dd0565eb5a9aa5879d634de1a27c55_568859_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-&#43;A2EIDVttN7NwbG7zYVJZA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Nitendo Switch游戏清单(不定期更新)</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+     
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2021 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">Table of contents</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#需求场景">需求场景</a></li>
+    <li><a href="#关于文件锁">关于文件锁</a></li>
+    <li><a href="#shell的flock命令">shell的flock命令</a>
+      <ol>
+        <li><a href="#flock对强制锁的实现">flock对强制锁的实现</a></li>
+      </ol>
+    </li>
+    <li><a href="#python的fcntl模块">python的fcntl模块</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='监控系统-druid.io 公司的业务日志是通过syslog-ng喂给kafka,提供给spark消费并进行数据清洗，然后把数据导入到druid进行实时聚合查询。
+监控维度覆盖到了druid.io的性能指标上，而针对druid.io的监控能找到的文档不多,官方文档略显简陋而且分散,方案落地的时候碰到了很多坑。
+趁记忆还新鲜整理出这篇文章。
+部署及配置 方案说明 druid配置graphite-emitter,把相关metrics发送给graphite,然后由grafana做前端展示及告警
+版本说明 系统版本：Ubuntu 14.04
+druid版本：imply-2.5.5 druid-0.12.0
+graphite版本: latest
+druid配置 关于监控，druid有几个相关术语简单解释下。
+ metrics monitors emitter  metrics  druid提供的用于监控的各类指标，包括各节点的系统资源使用统计，请求相关统计等。
+格式默认是json。通用字段包括 timestamp,metrics,service,host,value。 不过有一些metrics会有额外的dimensions,比如dataSource,type等。
+ monitors  同一类别metrics分属的组。
+druid支持的monitors包括（由于公司架构不包含realtime等节点，这里仅列举我使用的monitors）：
+ io.druid.client.cache.CacheMonitor
+Historical和Broker两个节点的cache统计数据 com.metamx.metrics.SysMonitor
+系统资源使用量统计，这里记得需要下载一个jar包在lib目录 io.druid.server.metrics.HistoricalMetricsMonitor
+Historical节点数据统计 com.metamx.metrics.JvmMonitor
+JVM相关统计 io.druid.server.metrics.QueryCountStatsMonitor
+Broker,historical两个节点的请求数统计   emitter  发送metrics的工具。 默认是logging,即直接把监控数据写入日志中。后续脚本筛选出来发送给监控系统，扩展性太差。
+还有一种方式&amp;rsquo;http&#39;,把metrics通过POST的方式发送给server。 两者可以混合使用，不过日志量实在太大&amp;hellip;除此之外，还有一种选择，就是graphite emitter。
+优点当然是配置灵活，扩展性强。 不过graphite-emitter是社区版的一个插件，需要独立安装。
+ 这里需要重点注意的是:
+ 不同的metrics归属于不同的monitors,而不同的节点支持的monitors不同
+ 所以monitors配置尽量不要配置在common下，以免出现报错，甚至出现druid节点无法启动的现象。
+比如监控historical的统计数据，就需要开启io.druid.server.metrics.HistoricalMetricsMonitor，如果配置在common中，你会发现其他节点有各种诡异的报错，各种启动失败&amp;hellip;跳坑无数的血泪教训
+部署过程 安装graphite 关于graphite，只需要了解大概架构即可。其实有点类似ELK的模式，graphite也包括三种模块。
+ carbon: 接收数据。本身并不会采集数据。这一点官方文档特意强调了。 whisper: 时序数据库，存储carbon接收的数据。替代品包括influxdb等。 graphite-web: Django编写的一个web应用，把数据渲染成图形。替代品当然是美丽优雅的grafana了。  如上所述，其实graphite本身也有绘图功能，只不过效果相当简陋&amp;hellip;还好grafana有官方app可以直接使用graphite当作data source。'><title>监控方案-druid篇</title>
+
+<link rel='canonical' href='http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/'>
+
+<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='监控方案-druid篇'>
+<meta property='og:description' content='监控系统-druid.io 公司的业务日志是通过syslog-ng喂给kafka,提供给spark消费并进行数据清洗，然后把数据导入到druid进行实时聚合查询。
+监控维度覆盖到了druid.io的性能指标上，而针对druid.io的监控能找到的文档不多,官方文档略显简陋而且分散,方案落地的时候碰到了很多坑。
+趁记忆还新鲜整理出这篇文章。
+部署及配置 方案说明 druid配置graphite-emitter,把相关metrics发送给graphite,然后由grafana做前端展示及告警
+版本说明 系统版本：Ubuntu 14.04
+druid版本：imply-2.5.5 druid-0.12.0
+graphite版本: latest
+druid配置 关于监控，druid有几个相关术语简单解释下。
+ metrics monitors emitter  metrics  druid提供的用于监控的各类指标，包括各节点的系统资源使用统计，请求相关统计等。
+格式默认是json。通用字段包括 timestamp,metrics,service,host,value。 不过有一些metrics会有额外的dimensions,比如dataSource,type等。
+ monitors  同一类别metrics分属的组。
+druid支持的monitors包括（由于公司架构不包含realtime等节点，这里仅列举我使用的monitors）：
+ io.druid.client.cache.CacheMonitor
+Historical和Broker两个节点的cache统计数据 com.metamx.metrics.SysMonitor
+系统资源使用量统计，这里记得需要下载一个jar包在lib目录 io.druid.server.metrics.HistoricalMetricsMonitor
+Historical节点数据统计 com.metamx.metrics.JvmMonitor
+JVM相关统计 io.druid.server.metrics.QueryCountStatsMonitor
+Broker,historical两个节点的请求数统计   emitter  发送metrics的工具。 默认是logging,即直接把监控数据写入日志中。后续脚本筛选出来发送给监控系统，扩展性太差。
+还有一种方式&amp;rsquo;http&#39;,把metrics通过POST的方式发送给server。 两者可以混合使用，不过日志量实在太大&amp;hellip;除此之外，还有一种选择，就是graphite emitter。
+优点当然是配置灵活，扩展性强。 不过graphite-emitter是社区版的一个插件，需要独立安装。
+ 这里需要重点注意的是:
+ 不同的metrics归属于不同的monitors,而不同的节点支持的monitors不同
+ 所以monitors配置尽量不要配置在common下，以免出现报错，甚至出现druid节点无法启动的现象。
+比如监控historical的统计数据，就需要开启io.druid.server.metrics.HistoricalMetricsMonitor，如果配置在common中，你会发现其他节点有各种诡异的报错，各种启动失败&amp;hellip;跳坑无数的血泪教训
+部署过程 安装graphite 关于graphite，只需要了解大概架构即可。其实有点类似ELK的模式，graphite也包括三种模块。
+ carbon: 接收数据。本身并不会采集数据。这一点官方文档特意强调了。 whisper: 时序数据库，存储carbon接收的数据。替代品包括influxdb等。 graphite-web: Django编写的一个web应用，把数据渲染成图形。替代品当然是美丽优雅的grafana了。  如上所述，其实graphite本身也有绘图功能，只不过效果相当简陋&amp;hellip;还好grafana有官方app可以直接使用graphite当作data source。'>
+<meta property='og:url' content='http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='监控' /><meta property='article:tag' content='druid' /><meta property='article:published_time' content='2017-10-16T22:43:41&#43;00:00'/><meta property='article:modified_time' content='2017-10-16T22:43:41&#43;00:00'/><meta property='og:image' content='http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/druid.jpeg' />
+<meta name="twitter:title" content="监控方案-druid篇">
+<meta name="twitter:description" content="监控系统-druid.io 公司的业务日志是通过syslog-ng喂给kafka,提供给spark消费并进行数据清洗，然后把数据导入到druid进行实时聚合查询。
+监控维度覆盖到了druid.io的性能指标上，而针对druid.io的监控能找到的文档不多,官方文档略显简陋而且分散,方案落地的时候碰到了很多坑。
+趁记忆还新鲜整理出这篇文章。
+部署及配置 方案说明 druid配置graphite-emitter,把相关metrics发送给graphite,然后由grafana做前端展示及告警
+版本说明 系统版本：Ubuntu 14.04
+druid版本：imply-2.5.5 druid-0.12.0
+graphite版本: latest
+druid配置 关于监控，druid有几个相关术语简单解释下。
+ metrics monitors emitter  metrics  druid提供的用于监控的各类指标，包括各节点的系统资源使用统计，请求相关统计等。
+格式默认是json。通用字段包括 timestamp,metrics,service,host,value。 不过有一些metrics会有额外的dimensions,比如dataSource,type等。
+ monitors  同一类别metrics分属的组。
+druid支持的monitors包括（由于公司架构不包含realtime等节点，这里仅列举我使用的monitors）：
+ io.druid.client.cache.CacheMonitor
+Historical和Broker两个节点的cache统计数据 com.metamx.metrics.SysMonitor
+系统资源使用量统计，这里记得需要下载一个jar包在lib目录 io.druid.server.metrics.HistoricalMetricsMonitor
+Historical节点数据统计 com.metamx.metrics.JvmMonitor
+JVM相关统计 io.druid.server.metrics.QueryCountStatsMonitor
+Broker,historical两个节点的请求数统计   emitter  发送metrics的工具。 默认是logging,即直接把监控数据写入日志中。后续脚本筛选出来发送给监控系统，扩展性太差。
+还有一种方式&amp;rsquo;http&#39;,把metrics通过POST的方式发送给server。 两者可以混合使用，不过日志量实在太大&amp;hellip;除此之外，还有一种选择，就是graphite emitter。
+优点当然是配置灵活，扩展性强。 不过graphite-emitter是社区版的一个插件，需要独立安装。
+ 这里需要重点注意的是:
+ 不同的metrics归属于不同的monitors,而不同的节点支持的monitors不同
+ 所以monitors配置尽量不要配置在common下，以免出现报错，甚至出现druid节点无法启动的现象。
+比如监控historical的统计数据，就需要开启io.druid.server.metrics.HistoricalMetricsMonitor，如果配置在common中，你会发现其他节点有各种诡异的报错，各种启动失败&amp;hellip;跳坑无数的血泪教训
+部署过程 安装graphite 关于graphite，只需要了解大概架构即可。其实有点类似ELK的模式，graphite也包括三种模块。
+ carbon: 接收数据。本身并不会采集数据。这一点官方文档特意强调了。 whisper: 时序数据库，存储carbon接收的数据。替代品包括influxdb等。 graphite-web: Django编写的一个web应用，把数据渲染成图形。替代品当然是美丽优雅的grafana了。  如上所述，其实graphite本身也有绘图功能，只不过效果相当简陋&amp;hellip;还好grafana有官方app可以直接使用graphite当作data source。"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/druid.jpeg' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="http://tinohean.top" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>Back</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/">
+                <img src="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/druid_hu29d20a37b17955b30e24040a85cde0bd_50267_800x0_resize_q75_box.jpeg"
+                        srcset="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/druid_hu29d20a37b17955b30e24040a85cde0bd_50267_800x0_resize_q75_box.jpeg 800w, /p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/druid_hu29d20a37b17955b30e24040a85cde0bd_50267_1600x0_resize_q75_box.jpeg 1600w"
+                        width="800" 
+                        height="500" 
+                        loading="lazy"
+                        alt="Featured image of post 监控方案-druid篇" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/">监控方案-druid篇</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Oct 16, 2017</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    2 min read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h1 id="监控系统-druidiohttpdruidio">监控系统-<a class="link" href="http://druid.io"  target="_blank" rel="noopener"
+    >druid.io</a></h1>
+<p>公司的业务日志是通过syslog-ng喂给kafka,提供给spark消费并进行数据清洗，然后把数据导入到druid进行实时聚合查询。<br>
+监控维度覆盖到了druid.io的性能指标上，而针对druid.io的监控能找到的文档不多,官方文档略显简陋而且分散,方案落地的时候碰到了很多坑。<br>
+趁记忆还新鲜整理出这篇文章。</p>
+<h2 id="部署及配置">部署及配置</h2>
+<h3 id="方案说明">方案说明</h3>
+<p>druid配置graphite-emitter,把相关metrics发送给graphite,然后由grafana做前端展示及告警</p>
+<h3 id="版本说明">版本说明</h3>
+<p>系统版本：Ubuntu 14.04<br>
+druid版本：imply-2.5.5 druid-0.12.0<br>
+graphite版本: latest</p>
+<h3 id="druid配置">druid配置</h3>
+<p>关于监控，druid有几个相关术语简单解释下。</p>
+<ul>
+<li>metrics</li>
+<li>monitors</li>
+<li>emitter</li>
+</ul>
+<h4 id="metrics">metrics</h4>
+<blockquote>
+<p>druid提供的用于监控的各类指标，包括各节点的系统资源使用统计，请求相关统计等。<br>
+格式默认是json。通用字段包括 timestamp,metrics,service,host,value。 <br>
+不过有一些metrics会有额外的dimensions,比如dataSource,type等。</p>
+</blockquote>
+<h4 id="monitors">monitors</h4>
+<blockquote>
+<p>同一类别metrics分属的组。<br>
+druid支持的monitors包括（由于公司架构不包含realtime等节点，这里仅列举我使用的monitors）：</p>
+<ul>
+<li>io.druid.client.cache.CacheMonitor<br>
+Historical和Broker两个节点的cache统计数据</li>
+<li>com.metamx.metrics.SysMonitor<br>
+系统资源使用量统计，这里记得需要下载一个<a class="link" href="https://repository.jboss.org/nexus/content/repositories/thirdparty-uploads/org/hyperic/sigar/1.6.5.132/sigar-1.6.5.132.jar"  target="_blank" rel="noopener"
+    >jar包</a>在lib目录</li>
+<li>io.druid.server.metrics.HistoricalMetricsMonitor<br>
+Historical节点数据统计</li>
+<li>com.metamx.metrics.JvmMonitor<br>
+JVM相关统计</li>
+<li>io.druid.server.metrics.QueryCountStatsMonitor<br>
+Broker,historical两个节点的请求数统计</li>
+</ul>
+</blockquote>
+<h4 id="emitter">emitter</h4>
+<blockquote>
+<p>发送metrics的工具。
+默认是logging,即直接把监控数据写入日志中。后续脚本筛选出来发送给监控系统，扩展性太差。<br>
+还有一种方式&rsquo;http',把metrics通过POST的方式发送给server。
+两者可以混合使用，不过日志量实在太大&hellip;除此之外，还有一种选择，就是graphite emitter。<br>
+优点当然是配置灵活，扩展性强。
+不过graphite-emitter是社区版的一个插件，需要独立安装。</p>
+</blockquote>
+<p>这里需要重点注意的是:</p>
+<blockquote>
+<p><strong>不同的metrics归属于不同的monitors,而不同的节点支持的monitors不同</strong></p>
+</blockquote>
+<p>所以monitors配置尽量不要配置在common下，以免出现报错，甚至出现druid节点无法启动的现象。<br>
+比如监控historical的统计数据，就需要开启<code>io.druid.server.metrics.HistoricalMetricsMonitor</code>，如果配置在common中，你会发现其他节点有各种诡异的报错，各种启动失败&hellip;跳坑无数的血泪教训</p>
+<h3 id="部署过程">部署过程</h3>
+<h4 id="安装graphite">安装graphite</h4>
+<p>关于graphite，只需要了解大概架构即可。其实有点类似ELK的模式，graphite也包括三种模块。</p>
+<ul>
+<li>carbon: 接收数据。本身并不会采集数据。这一点官方文档特意强调了。</li>
+<li>whisper: 时序数据库，存储carbon接收的数据。替代品包括influxdb等。</li>
+<li>graphite-web: Django编写的一个web应用，把数据渲染成图形。替代品当然是美丽优雅的grafana了。</li>
+</ul>
+<p>如上所述，其实graphite本身也有绘图功能，只不过效果相当简陋&hellip;还好grafana有官方app可以直接使用graphite当作data source。<br>
+尝试了一次graphite的部署过程，实在痛苦不堪。模块多，python及pip多版本的兼容性是个很大的坑，依赖库django的兼容性更是坑上加坑。我花了一天的时间调试才勉强搭建好测试环境。</p>
+<p>此后线上环境为了节省时间，我直接上了docker。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo apt-get update
+sudo apt-get install <span class="se">\
+</span><span class="se"></span>    linux-image-extra-<span class="k">$(</span>uname -r<span class="k">)</span> <span class="se">\
+</span><span class="se"></span>    linux-image-extra-virtual
+sudo apt-get install <span class="se">\
+</span><span class="se"></span>    apt-transport-https <span class="se">\
+</span><span class="se"></span>    ca-certificates <span class="se">\
+</span><span class="se"></span>    curl <span class="se">\
+</span><span class="se"></span>    software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg <span class="p">|</span> sudo apt-key add -
+sudo add-apt-repository <span class="se">\
+</span><span class="se"></span>   <span class="s2">&#34;deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+</span><span class="s2">   </span><span class="k">$(</span>lsb_release -cs<span class="k">)</span><span class="s2"> \
+</span><span class="s2">   stable&#34;</span>
+sudo apt-get update
+sudo apt-get install docker-ce
+</code></pre></div><p>国内docker pull也是蜜汁缓慢，为此我还得配置一个加速器</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo vim /etc/default/docker 
+    <span class="nv">DOCKER_OPTS</span><span class="o">=</span><span class="s2">&#34;--registry-mirror=https://registry.docker-cn.com&#34;</span>
+sudo service docker restart
+</code></pre></div><p>终于可以愉快运行了</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo docker run -d --name graphite --restart<span class="o">=</span>always -p 80:80 -p 2003-2004:2003-2004 -p 2023-2024:2023-2024 -p 8125:8125/udp -p 8126:8126 graphiteapp/graphite-statsd
+</code></pre></div><p>此处端口可以看到一共开放了7个端口，其中，80端口是前端web页面。<br>
+carbon支持两种协议的接收方式，一种是The plaintext protocol，端口为2003，另一种是The pickle protocol，端口为2004。<br>
+而2023和2024分别对应两个接收方式的聚合器carbon-aggregator.py的端口。<br>
+8125和8126是statsd对应的端口，此处用不到。</p>
+<p>此处需要注意的一点是，nc和telnet等命令使用的是The plaintext protocol协议，也就是2003端口。而druid的graphite-emitter使用的是The pickle protocal,即2004端口。</p>
+<p>测试数据</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="nv">PORT</span><span class="o">=</span><span class="m">2003</span>
+<span class="nv">SERVER</span><span class="o">=</span>graphite.your.org
+<span class="nb">echo</span> <span class="s2">&#34;local.random.diceroll 4 `date +%s`&#34;</span> <span class="p">|</span> nc -c <span class="si">${</span><span class="nv">SERVER</span><span class="si">}</span> <span class="si">${</span><span class="nv">PORT</span><span class="si">}</span>
+</code></pre></div><p>访问http://127.0.0.1可以看到略显丑陋的界面。</p>
+<h4 id="druid-graphiter插件部署">druid-graphiter插件部署</h4>
+<p>druid插件包括core和community两种，前者集成在druid里面，无需额外按照，后者需要根据匹配的版本号去自行安装。<br>
+安装包命名格式如下：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">                                       名字 ：版本号
+io.druid.extensions.contrib:graphite-emitter:0.12.0
+</code></pre></div><p>安装graphite-emitter extensions</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="nb">cd</span> <span class="nv">$Druid_PATH</span>/
+
+java <span class="se">\
+</span><span class="se"></span>  -cp <span class="s2">&#34;lib/*&#34;</span> <span class="se">\
+</span><span class="se"></span>  -Ddruid.extensions.directory<span class="o">=</span><span class="s2">&#34;extensions&#34;</span> <span class="se">\
+</span><span class="se"></span>  -Ddruid.extensions.hadoopDependenciesDir<span class="o">=</span><span class="s2">&#34;hadoop-dependencies&#34;</span> <span class="se">\
+</span><span class="se"></span>  io.druid.cli.Main tools pull-deps <span class="se">\
+</span><span class="se"></span>  --no-default-hadoop <span class="se">\
+</span><span class="se"></span>  -c <span class="s2">&#34;io.druid.extensions.contrib:graphite-emitter:0.12.0&#34;</span>
+
+</code></pre></div><h4 id="配置include-emitter">配置include Emitter</h4>
+<pre><code>vim common.runtime.properties
+    druid.extensions.loadList=[...,&quot;graphite-emitter&quot;] #最后面加入graphite-emitter即可
+</code></pre><h4 id="配置monitoring">配置Monitoring</h4>
+<p>此处记得大坑，不同的monitors一定要针对性配置在对应的模块下，不要全部写入common。</p>
+<pre><code>vim common.runtime.properties
+  druid.monitoring.monitors=[&quot;com.metamx.metrics.SysMonitor&quot;,&quot;com.metamx.metrics.JvmMonitor&quot;]
+  druid.emitter=graphite 
+  druid.emitter.graphite.hostname=127.0.0.1
+  druid.emitter.graphite.port=2004   #记得上文解释的两种协议吧。这里配置pickle协议的2004端口
+  druid.emitter.graphite.eventConverter={&quot;type&quot;:&quot;whiteList&quot;, &quot;namespacePrefix&quot;: &quot;druid.SYS_JVM&quot;, &quot;ignoreHostname&quot;:true, &quot;ignoreServiceName&quot;:false, &quot;mapPath&quot;:&quot;conf/druid_metric_whitelist.j
+son&quot;}
+  druid.emitter.logging.logLevel=info
+  druid.monitoring.emissionPeriod=PT1m   #自定义设置采集周期。默认1min
+</code></pre><pre><code>vim broker/runtime.properties
+  #monitor
+  druid.monitoring.monitors=[&quot;io.druid.client.cache.CacheMonitor&quot;,&quot;io.druid.server.metrics.QueryCountStatsMonitor&quot;]
+  druid.emitter=graphite
+  druid.emitter.graphite.hostname=127.0.0.1
+  druid.emitter.graphite.port=2004
+  druid.emitter.graphite.eventConverter={&quot;type&quot;:&quot;whiteList&quot;, &quot;namespacePrefix&quot;: &quot;druid.broker&quot;, &quot;ignoreHostname&quot;:true, &quot;ignoreServiceName&quot;:false, &quot;mapPath&quot;:&quot;conf/druid_metric_whitelist.js
+on&quot;}
+  druid.emitter.logging.logLevel=info
+  druid.monitoring.emissionPeriod=PT1m
+</code></pre><pre><code>vim historical/runtime.properties
+  #monitor
+  druid.monitoring.monitors=[&quot;io.druid.server.metrics.HistoricalMetricsMonitor&quot;,&quot;io.druid.client.cache.CacheMonitor&quot;,&quot;io.druid.server.metrics.QueryCountStatsMonitor&quot;]
+  druid.emitter=graphite
+  druid.emitter.graphite.hostname=127.0.0.1
+  druid.emitter.graphite.port=2004
+  druid.emitter.graphite.eventConverter={&quot;type&quot;:&quot;whiteList&quot;, &quot;namespacePrefix&quot;: &quot;druid.historical&quot;, &quot;ignoreHostname&quot;:true, &quot;ignoreServiceName&quot;:false, &quot;mapPath&quot;:&quot;conf/druid_metric_whitelis
+t.json&quot;}
+  druid.emitter.logging.logLevel=info
+  druid.monitoring.emissionPeriod=PT1m
+</code></pre><h4 id="关于all-和白名单模式">关于all 和白名单模式</h4>
+<p>all会接收到很多无用的信息。白名单模式只需配置自己监控的metrics即可。<br>
+关于白名单json文件，根据官方文档关于metrics的接收按需配置，格式请参考https://github.com/druid-io/druid/blob/master/extensions-contrib/graphite-emitter/src/main/resources/defaultWhiteListMap.json</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="err">conf/druid_metric_whitelist.json</span>
+
+<span class="p">{</span>
+  <span class="nt">&#34;query/time&#34;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="s2">&#34;dataSource&#34;</span><span class="p">,</span>
+    <span class="s2">&#34;type&#34;</span>
+  <span class="p">],</span>
+  <span class="nt">&#34;query/node/time&#34;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="s2">&#34;dataSource&#34;</span><span class="p">,</span>
+    <span class="s2">&#34;type&#34;</span>
+  <span class="p">],</span>
+  <span class="nt">&#34;query/success/count&#34;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="nt">&#34;query/failed/count&#34;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="nt">&#34;query/interrupted/count&#34;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="nt">&#34;query/segment/time&#34;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="s2">&#34;dataSource&#34;</span><span class="p">,</span>
+    <span class="s2">&#34;type&#34;</span>
+  <span class="p">],</span>
+  <span class="nt">&#34;query/cache/delta&#34;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="nt">&#34;query/cache/total&#34;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="nt">&#34;segment/max&#34;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="nt">&#34;segment/used&#34;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="nt">&#34;segment/usedPercent&#34;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="nt">&#34;segment/count&#34;</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="nt">&#34;jvm/gc&#34;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&#34;gcName&#34;</span><span class="p">],</span>
+  <span class="nt">&#34;jvm/mem&#34;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&#34;memKind&#34;</span><span class="p">],</span>
+  <span class="nt">&#34;jvm/pool&#34;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&#34;poolKind&#34;</span><span class="p">,</span><span class="s2">&#34;poolName&#34;</span><span class="p">],</span>
+  <span class="nt">&#34;sys/net&#34;</span><span class="p">:[],</span>
+  <span class="nt">&#34;sys/fs&#34;</span><span class="p">:[],</span>
+  <span class="nt">&#34;sys/mem&#34;</span><span class="p">:[],</span>
+  <span class="nt">&#34;sys/cpu&#34;</span><span class="p">:[]</span>
+<span class="p">}</span>
+</code></pre></div><p>namespacePrefix此时可以根据节点分别命名为</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">druid.broker
+druid.historical
+...
+</code></pre></div><p>这样graphite查询结构就可以节点分开了</p>
+<h2 id="文档参考">文档参考</h2>
+<p>关于监控metrics的说明
+<a class="link" href="http://druid.io/docs/0.12.0/operations/metrics.html"  target="_blank" rel="noopener"
+    >http://druid.io/docs/0.12.0/operations/metrics.html</a></p>
+<p>关于monitors及metrics配置相关的说明
+<a class="link" href="http://druid.io/docs/latest/configuration/index.html"  target="_blank" rel="noopener"
+    >http://druid.io/docs/latest/configuration/index.html</a></p>
+<p>关于graphite-emitter配置相关的说明
+<a class="link" href="http://druid.io/docs/0.12.0/development/extensions-contrib/graphite.html"  target="_blank" rel="noopener"
+    >http://druid.io/docs/0.12.0/development/extensions-contrib/graphite.html</a></p>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/%E7%9B%91%E6%8E%A7/">监控</a>
+        
+            <a href="/tags/druid/">druid</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/">
+        
+        
+            <div class="article-image">
+                <img src="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/prometheus.e68ccd07f88822501da63f6d6434fab2_hu29c20fb19d2aaa59a3207076dda60f90_67350_250x150_fill_q75_box_smart1.jpg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-5ozNB/iIIlAdpj9tZDT6sg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Prometheus常用Exporter及告警规则</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/grafana.3b7da84effaa3ef57cd738d7d45d03b0_hud6a20f3436e4696f01e55623167f1a17_283099_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-O32oTv&#43;qPvV81zjX1F0DsA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">监控方案-kafka篇</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%B5%85%E8%B0%88chatops/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%B5%85%E8%B0%88chatops/chatops.047fdca1683487486942824c5121858c_hu2af93606f657e048f3b8c35cecf8603a_39849_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-BH/coWg0h0hpQoJMUSGFjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">浅谈ChatOps</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/paddle.f9980b85e5d47359ccd6cefec98ae32a_hu5438825b9b6d1014226d20d231e650c2_191045_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-&#43;ZgLheXUc1nM1s7&#43;yYrjKg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Paddle飞桨部署方案</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/soul/">
+        
+        
+            <div class="article-image">
+                <img src="/p/soul/soul.1ec3d9ceed2b95e92d1a2f57a754173e_hua5b7a4101002ac3de8aa87e6c8d8ffa6_107809_250x150_fill_q75_box_smart1.JPG" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-HsPZzu0rlektGi9Xp1QXPg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Soul</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+     
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2021 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">Table of contents</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#部署及配置">部署及配置</a>
+      <ol>
+        <li><a href="#方案说明">方案说明</a></li>
+        <li><a href="#版本说明">版本说明</a></li>
+        <li><a href="#druid配置">druid配置</a>
+          <ol>
+            <li><a href="#metrics">metrics</a></li>
+            <li><a href="#monitors">monitors</a></li>
+            <li><a href="#emitter">emitter</a></li>
+          </ol>
+        </li>
+        <li><a href="#部署过程">部署过程</a>
+          <ol>
+            <li><a href="#安装graphite">安装graphite</a></li>
+            <li><a href="#druid-graphiter插件部署">druid-graphiter插件部署</a></li>
+            <li><a href="#配置include-emitter">配置include Emitter</a></li>
+            <li><a href="#配置monitoring">配置Monitoring</a></li>
+            <li><a href="#关于all-和白名单模式">关于all 和白名单模式</a></li>
+          </ol>
+        </li>
+      </ol>
+    </li>
+    <li><a href="#文档参考">文档参考</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

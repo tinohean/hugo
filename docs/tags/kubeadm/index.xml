@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>kubeadm on 半岛无风</title>
+    <link>http://tinohean.top/tags/kubeadm/</link>
+    <description>Recent content in kubeadm on 半岛无风</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 14 Feb 2020 22:52:33 +0800</lastBuildDate><atom:link href="http://tinohean.top/tags/kubeadm/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Kubeadm部署kubernetes集群</title>
+      <link>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/</link>
+      <pubDate>Fri, 14 Feb 2020 22:52:33 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/</guid>
+      <description>Kubeadm部署kubernetes集群 前期准备 节点规划    主机名 角色 ip 配置 系统版本     k8s-master-01 master 172.21.0.3 4C8G Ubuntu 16.04.1 LTS   k8s-master-02 master 172.21.0.4 4C8G Ubuntu 16.04.1 LTS   k8s-master-03 master 172.21.0.5 4C8G Ubuntu 16.04.1 LTS   k8s-node-01 node 172.21.0.6 4C8G Ubuntu 16.04.1 LTS   k8s-node-02 node 172.21.0.7 4C8G Ubuntu 16.04.1 LTS   k8s-apiserver LB apiserver.k8s.local nginx实现的localproxy     环境配置 所有服务器都需要进行基本环境配置，比如关闭防火墙，关闭swap等</description>
+    </item>
+    
+  </channel>
+</rss>
