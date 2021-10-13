@@ -3,21 +3,33 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>http://tinohean.top/categories/</loc>
-    <lastmod>2021-09-02T23:51:08+08:00</lastmod>
+    <lastmod>2021-09-21T23:11:56+08:00</lastmod>
   </url><url>
-    <loc>http://tinohean.top/tags/chatops/</loc>
-    <lastmod>2021-09-02T23:51:08+08:00</lastmod>
+    <loc>http://tinohean.top/tags/kubernetes/</loc>
+    <lastmod>2021-09-21T23:11:56+08:00</lastmod>
   </url><url>
     <loc>http://tinohean.top/post/</loc>
-    <lastmod>2021-09-02T23:51:08+08:00</lastmod>
+    <lastmod>2021-09-21T23:11:56+08:00</lastmod>
   </url><url>
     <loc>http://tinohean.top/tags/</loc>
-    <lastmod>2021-09-02T23:51:08+08:00</lastmod>
+    <lastmod>2021-09-21T23:11:56+08:00</lastmod>
   </url><url>
     <loc>http://tinohean.top/</loc>
-    <lastmod>2021-09-02T23:51:08+08:00</lastmod>
+    <lastmod>2021-09-21T23:11:56+08:00</lastmod>
+  </url><url>
+    <loc>http://tinohean.top/tags/%E5%AE%B9%E5%99%A8/</loc>
+    <lastmod>2021-09-21T23:11:56+08:00</lastmod>
   </url><url>
     <loc>http://tinohean.top/categories/blog/</loc>
+    <lastmod>2021-09-21T23:11:56+08:00</lastmod>
+  </url><url>
+    <loc>http://tinohean.top/tags/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5/</loc>
+    <lastmod>2021-09-21T23:11:56+08:00</lastmod>
+  </url><url>
+    <loc>http://tinohean.top/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/</loc>
+    <lastmod>2021-09-21T23:11:56+08:00</lastmod>
+  </url><url>
+    <loc>http://tinohean.top/tags/chatops/</loc>
     <lastmod>2021-09-02T23:51:08+08:00</lastmod>
   </url><url>
     <loc>http://tinohean.top/p/%E6%B5%85%E8%B0%88chatops/</loc>
@@ -73,15 +85,6 @@
   </url><url>
     <loc>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/</loc>
     <lastmod>2020-02-14T22:52:33+08:00</lastmod>
-  </url><url>
-    <loc>http://tinohean.top/tags/kubernetes/</loc>
-    <lastmod>2020-02-14T22:52:33+08:00</lastmod>
-  </url><url>
-    <loc>http://tinohean.top/tags/%E5%AE%B9%E5%99%A8/</loc>
-    <lastmod>2019-09-21T23:11:56+08:00</lastmod>
-  </url><url>
-    <loc>http://tinohean.top/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/</loc>
-    <lastmod>2019-09-21T23:11:56+08:00</lastmod>
   </url><url>
     <loc>http://tinohean.top/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/</loc>
     <lastmod>2019-09-02T11:47:40+08:00</lastmod>

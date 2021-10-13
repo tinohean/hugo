@@ -6,14 +6,39 @@
     <description>Recent content in 容器 on 半岛无风</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sat, 21 Sep 2019 23:11:56 +0800</lastBuildDate><atom:link href="http://tinohean.top/tags/%E5%AE%B9%E5%99%A8/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 21 Sep 2021 23:11:56 +0800</lastBuildDate><atom:link href="http://tinohean.top/tags/%E5%AE%B9%E5%99%A8/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>部署策略及容器化实现</title>
       <link>http://tinohean.top/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/</link>
-      <pubDate>Sat, 21 Sep 2019 23:11:56 +0800</pubDate>
+      <pubDate>Tue, 21 Sep 2021 23:11:56 +0800</pubDate>
       
       <guid>http://tinohean.top/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/</guid>
-      <description>应用容器化改造的设计原则及模式 蓝绿发布 kubernetes实现 金丝雀发布 kubernetes实现 参考文档  https://harness.io/blog/continuous-verification/blue-green-canary-deployment-strategies/ https://medium.com/tech-at-wildlife-studios/canary-deployment-in-kubernetes-how-to-use-the-pattern-b2e9c40d085d https://kubernetes.io/zh/docs/concepts/cluster-administration/manage-deployment/ https://www.ianlewis.org/en/bluegreen-deployments-kubernetes  </description>
+      <description>部署策略 不同的应用有不同的部署场景，有的应用必须是滚动更新的，不可以有服务停止的时间。而有些应用由于某些原因，比如不支持新旧版本共存，必须是版本一键切换的。
+常见的部署策略包括蓝绿发布，金丝雀发布（灰度发布），A/B Test发布等。
+基础发布 基础发布是最为原始也是最为简单的一种发布策略，即替换式更新。把线上所有服务一次性替换为更新版本。缺点是回滚慢，风险较高，服务有中断时间。  基础发布 
+多服务发布 服务有多版本共存的情况下，可以采取跟基础发布类似的策略，同时一次性更新。但由于多版本共存，因此风险比基础发布更低一些，但仍然存在某个版本出问题的可能性。缺点是回滚慢，多版本带来的管理复杂，测试复杂等。  多服务发布 
+滚动发布 滚动发布是滚动式更新服务的每一个节点。好处是回滚相对简单，滚动的方式更容易发现问题，因此风险较低。不过，服务必须支持新旧版本共存的情况。  滚动发布 
+蓝绿发布 蓝绿发布是环境镜像替换。绿环境是线上运行环境，蓝环境是需要发布版本的另一个环境，把流量从绿环境切换到蓝环境完成版本更新。
+蓝环境一般会进行深度测试，因此风险较低。此外，流量切换很快捷，回滚是瞬间完成的。缺点是成本较高，在一些复杂的微服务场景下也很难做到覆盖所有的回归测试，从而可能造成服务中断或其他问题。  蓝绿发布 
+金丝雀发布 金丝雀发布（国内一般称之为灰度发布）类似于滚动发布，以增量的方式进行版本迭代。不同的是金丝雀发布更倾向于百分比的推进，并可以指定发布的节点，从而可以在增量迭代的过程中进行数据监控及比对，从而提早发现问题。
+好处是风险低，成本比蓝绿发布低，回滚方便。缺点也是显而易见的，比对和测试需要更长的时间周期和更复杂的运维操作。不停迭代的新版本数量也需要监控的更新。
+ 金丝雀发布 
+A/B测试发布 A/B Test需要多个版本在线上同时运行进行指标测量和比较。可以通过路由规则，A/B测试工具等实现流量分流及测量。最后根据比较结果选择最好的版本进行全量发布。
+A/B测试倾向于实验和探索测试。优点是成本低，工具齐全。缺点是存在风险，测试复杂，自动化实现更困难。
+ A/B测试发布 
+部署策略的选择 一般来说，蓝绿发布和金丝雀发布是比较常用的发布策略。如果应用支持新旧版本共存的话，首选是金丝雀发布，如果不支持的话，首选是蓝绿发布。
+对于一些故障容忍度较高的服务，可以采用最为简单的基础发布策略。
+基于风险和成本简单归纳一下
+低风险，低成本： 金丝雀发布
+高风险，低成本： 基础发布
+低风险，高成本： 蓝绿发布
+ 部署策略的容器化实现 基础发布 更新Deployment的.spec.strategy.type==Recreate
+则默认部署策略会变成重新创建，也就是基础发布的策略方式：杀死所有Pod,然后重新创建新版本的Pod
+滚动发布 kubernetes的Deployment默认部署策略就是滚动发布，好处是通过探针可以实时检测服务的健康状况，在新Pod就绪健康之前会一直等待，从而避免更大规模的故障风险。
+控制发布速度  minReadySeconds
+这个属性指定新创建的Pod在运行多少秒后才能将其视为可用。对于一些需要加载数据到内存的应用来说尤为有用。 maxSurge
+这个属性决定了Deployment中除了配置的期待副本数量外，最多允许超出的pod实例数量。也决定了升级的速度，数量越大，升级更新越快。 maxUnavailable
+设置在滚动发布期间，Deployment最大允许多少个pod处于不可用状态。谨慎设置，尤其是在流量高峰期。一般我们设置为0，副本数量会一直保持在期待状态中。  配置示例 apiVersion:apps/v1kind:Deploymentmetadata:creationTimestamp:nulllabels:app:nginxname:nginxspec:replicas:10minReadySeconds:10selector:matchLabels:app:nginxstrategy:rollingUpdate:maxSurge:1maxUnavailable:1type:RollingUpdatetemplate:metadata:creationTimestamp:nulllabels:app:nginxspec:containers:- image:nginxname:nginxresources:{}readinessProbe:failureThreshold:10httpGet:path:/readyport:80scheme:HTTPinitialDelaySeconds:5periodSeconds:5successThreshold:1timeoutSeconds:3status:{}金丝雀发布 尽管可以通过kubectl rollout pause暂停滚动更新方式实现手动粗粒度灰度，但由于无法精准控制比例，官方文档建议是建立多个Deployment实现。</description>
     </item>
     
     <item>
