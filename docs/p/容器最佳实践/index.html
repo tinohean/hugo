@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='容器构建最佳实践 容器的临时性 这个原则意味着容器可以被随时暂停，销毁，然后重建。容器是无状态的。有状态的数据应该持久化到后端服务中。
+容器构建上下文 build context指docker build执行时的当前目录，默认会找context的Dockerfile进行构建，也可以手动-f指定Dockerfile文件,也可以指定构建目录。
+当前目录的所有目录和文件都会被发送到docker daemon当作构建的上下文，过多、过大的文件都会使得镜像构建时间加长，镜像大小变大。
+因此，build context中应该只包含最少的文件。
+通过标准输出管道构建 build context build context可以是stdin，通过管道传递，这样的好处是不需要传送额外的文件，提升构建速度。
+docker build -&amp;lt;&amp;lt;EOF FROM busybox RUN echo &amp;#34;hello world&amp;#34; EOF 不过只限于一些简单的构建场景，使用这种方式不可以COPY或者ADD其他文件。
+Dockerfile Dockerfile也可以是stdin，但能实现上述的方式更复杂些的操作，可以使用COPY、ADD。
+docker build -t myimage:latest -f- . &amp;lt;&amp;lt;EOF FROM busybox COPY somefile.txt ./ RUN cat /somefile.txt EOF remote build context 构建上下文可以使用远程地址，适用于一些场景比如git等。
+docker build -t myimage:latest -f- https://github.com/docker-library/hello-world.git &amp;lt;&amp;lt;EOF FROM busybox COPY hello.c ./ EOF 使用.dockerignore排除文件 同.gitignore类似，docker build也可以通过配置.dockerignore文件排除掉不需要的文件。 格式
+# comment */temp* */*/temp* temp?'><title>容器最佳实践</title>
+
+<link rel='canonical' href='http://tinohean.top/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/'>
+
+<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='容器最佳实践'>
+<meta property='og:description' content='容器构建最佳实践 容器的临时性 这个原则意味着容器可以被随时暂停，销毁，然后重建。容器是无状态的。有状态的数据应该持久化到后端服务中。
+容器构建上下文 build context指docker build执行时的当前目录，默认会找context的Dockerfile进行构建，也可以手动-f指定Dockerfile文件,也可以指定构建目录。
+当前目录的所有目录和文件都会被发送到docker daemon当作构建的上下文，过多、过大的文件都会使得镜像构建时间加长，镜像大小变大。
+因此，build context中应该只包含最少的文件。
+通过标准输出管道构建 build context build context可以是stdin，通过管道传递，这样的好处是不需要传送额外的文件，提升构建速度。
+docker build -&amp;lt;&amp;lt;EOF FROM busybox RUN echo &amp;#34;hello world&amp;#34; EOF 不过只限于一些简单的构建场景，使用这种方式不可以COPY或者ADD其他文件。
+Dockerfile Dockerfile也可以是stdin，但能实现上述的方式更复杂些的操作，可以使用COPY、ADD。
+docker build -t myimage:latest -f- . &amp;lt;&amp;lt;EOF FROM busybox COPY somefile.txt ./ RUN cat /somefile.txt EOF remote build context 构建上下文可以使用远程地址，适用于一些场景比如git等。
+docker build -t myimage:latest -f- https://github.com/docker-library/hello-world.git &amp;lt;&amp;lt;EOF FROM busybox COPY hello.c ./ EOF 使用.dockerignore排除文件 同.gitignore类似，docker build也可以通过配置.dockerignore文件排除掉不需要的文件。 格式
+# comment */temp* */*/temp* temp?'>
+<meta property='og:url' content='http://tinohean.top/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='容器' /><meta property='article:published_time' content='2018-08-25T18:06:32&#43;08:00'/><meta property='article:modified_time' content='2018-08-25T18:06:32&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/best-practice.jpeg' />
+<meta name="twitter:title" content="容器最佳实践">
+<meta name="twitter:description" content="容器构建最佳实践 容器的临时性 这个原则意味着容器可以被随时暂停，销毁，然后重建。容器是无状态的。有状态的数据应该持久化到后端服务中。
+容器构建上下文 build context指docker build执行时的当前目录，默认会找context的Dockerfile进行构建，也可以手动-f指定Dockerfile文件,也可以指定构建目录。
+当前目录的所有目录和文件都会被发送到docker daemon当作构建的上下文，过多、过大的文件都会使得镜像构建时间加长，镜像大小变大。
+因此，build context中应该只包含最少的文件。
+通过标准输出管道构建 build context build context可以是stdin，通过管道传递，这样的好处是不需要传送额外的文件，提升构建速度。
+docker build -&amp;lt;&amp;lt;EOF FROM busybox RUN echo &amp;#34;hello world&amp;#34; EOF 不过只限于一些简单的构建场景，使用这种方式不可以COPY或者ADD其他文件。
+Dockerfile Dockerfile也可以是stdin，但能实现上述的方式更复杂些的操作，可以使用COPY、ADD。
+docker build -t myimage:latest -f- . &amp;lt;&amp;lt;EOF FROM busybox COPY somefile.txt ./ RUN cat /somefile.txt EOF remote build context 构建上下文可以使用远程地址，适用于一些场景比如git等。
+docker build -t myimage:latest -f- https://github.com/docker-library/hello-world.git &amp;lt;&amp;lt;EOF FROM busybox COPY hello.c ./ EOF 使用.dockerignore排除文件 同.gitignore类似，docker build也可以通过配置.dockerignore文件排除掉不需要的文件。 格式
+# comment */temp* */*/temp* temp?"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/best-practice.jpeg' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KZ420DZ0LK"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-KZ420DZ0LK', { 'anonymize_ip': false });
+}
+</script>
+
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="http://tinohean.top" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>Back</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/">
+                <img src="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/best-practice_hu39150d17f5c9712007ceb66088b02be0_125186_800x0_resize_q75_box.jpeg"
+                        srcset="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/best-practice_hu39150d17f5c9712007ceb66088b02be0_125186_800x0_resize_q75_box.jpeg 800w, /p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/best-practice_hu39150d17f5c9712007ceb66088b02be0_125186_1600x0_resize_q75_box.jpeg 1600w"
+                        width="800" 
+                        height="317" 
+                        loading="lazy"
+                        alt="Featured image of post 容器最佳实践" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/">容器最佳实践</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Aug 25, 2018</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    2 min read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h2 id="容器构建最佳实践">容器构建最佳实践</h2>
+<h3 id="容器的临时性">容器的临时性</h3>
+<p>这个原则意味着容器可以被随时暂停，销毁，然后重建。容器是无状态的。有状态的数据应该持久化到后端服务中。</p>
+<h3 id="容器构建上下文">容器构建上下文</h3>
+<p>build context指docker build执行时的当前目录，默认会找context的Dockerfile进行构建，也可以手动-f指定Dockerfile文件,也可以指定构建目录。</p>
+<p>当前目录的所有目录和文件都会被发送到docker daemon当作构建的上下文，过多、过大的文件都会使得镜像构建时间加长，镜像大小变大。</p>
+<p>因此，build context中应该只包含最少的文件。</p>
+<h3 id="通过标准输出管道构建">通过标准输出管道构建</h3>
+<h4 id="build-context">build context</h4>
+<p>build context可以是stdin，通过管道传递，这样的好处是不需要传送额外的文件，提升构建速度。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">docker build -<span class="s">&lt;&lt;EOF
+</span><span class="s">FROM busybox
+</span><span class="s">RUN echo &#34;hello world&#34;
+</span><span class="s">EOF</span>
+</code></pre></div><p>不过只限于一些简单的构建场景，使用这种方式不可以COPY或者ADD其他文件。</p>
+<h4 id="dockerfile">Dockerfile</h4>
+<p>Dockerfile也可以是stdin，但能实现上述的方式更复杂些的操作，可以使用COPY、ADD。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">docker build -t myimage:latest -f- . <span class="s">&lt;&lt;EOF
+</span><span class="s">FROM busybox
+</span><span class="s">COPY somefile.txt ./
+</span><span class="s">RUN cat /somefile.txt
+</span><span class="s">EOF</span>
+</code></pre></div><h4 id="remote-build-context">remote build context</h4>
+<p>构建上下文可以使用远程地址，适用于一些场景比如git等。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">docker build -t myimage:latest -f- https://github.com/docker-library/hello-world.git <span class="s">&lt;&lt;EOF
+</span><span class="s">FROM busybox
+</span><span class="s">COPY hello.c ./
+</span><span class="s">EOF</span>
+</code></pre></div><h3 id="使用dockerignore排除文件">使用.dockerignore排除文件</h3>
+<p>同.gitignore类似，docker build也可以通过配置.dockerignore文件排除掉不需要的文件。
+格式</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># comment</span>
+*/temp*
+*/*/temp*
+temp?
+*.md
+!readme.md
+</code></pre></div><p>可以通配符<code>*</code>匹配，<code>！</code>排除。</p>
+<h3 id="多阶段构建">多阶段构建</h3>
+<p>通过缓存机制，可以在最后一步构建阶段创建镜像，实现镜像的最小化。顺序一般是先从很少变动的基础环境层开始到最后的频繁变动层，这样可以更有效使用缓存机制。
+顺序如下：</p>
+<ol>
+<li>安装应用需要的各类工具</li>
+<li>安装或更新各种依赖库</li>
+<li>构建应用</li>
+</ol>
+<p>案例</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-Dockerfile" data-lang="Dockerfile"><span class="c"># syntax=docker/dockerfile:1</span><span class="err">
+</span><span class="err"></span><span class="k">FROM</span><span class="s"> golang:1.16-alpine AS build</span><span class="err">
+</span><span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="c"># Install tools required for project</span><span class="err">
+</span><span class="err"></span><span class="c"># Run `docker build --no-cache .` to update dependencies</span><span class="err">
+</span><span class="err"></span><span class="k">RUN</span> apk add --no-cache git<span class="err">
+</span><span class="err"></span><span class="k">RUN</span> go get github.com/golang/dep/cmd/dep<span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="c"># List project dependencies with Gopkg.toml and Gopkg.lock</span><span class="err">
+</span><span class="err"></span><span class="c"># These layers are only re-built when Gopkg files are updated</span><span class="err">
+</span><span class="err"></span><span class="k">COPY</span> Gopkg.lock Gopkg.toml /go/src/project/<span class="err">
+</span><span class="err"></span><span class="k">WORKDIR</span><span class="s"> /go/src/project/</span><span class="err">
+</span><span class="err"></span><span class="c"># Install library dependencies</span><span class="err">
+</span><span class="err"></span><span class="k">RUN</span> dep ensure -vendor-only<span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="c"># Copy the entire project and build it</span><span class="err">
+</span><span class="err"></span><span class="c"># This layer is rebuilt when a file changes in the project directory</span><span class="err">
+</span><span class="err"></span><span class="k">COPY</span> . /go/src/project/<span class="err">
+</span><span class="err"></span><span class="k">RUN</span> go build -o /bin/project<span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="c">######## 以上都是为了构建项目运行目录而进行的，不需要在实际运行镜像中，因此多阶段构建只需拷贝构建结果到运行时目录即可。</span><span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="c"># This results in a single layer image</span><span class="err">
+</span><span class="err"></span><span class="k">FROM</span><span class="s"> scratch</span><span class="err">
+</span><span class="err"></span><span class="k">COPY</span> --from<span class="o">=</span>build /bin/project /bin/project<span class="err">
+</span><span class="err"></span><span class="k">ENTRYPOINT</span> <span class="p">[</span><span class="s2">&#34;/bin/project&#34;</span><span class="p">]</span><span class="err">
+</span><span class="err"></span><span class="k">CMD</span> <span class="p">[</span><span class="s2">&#34;--help&#34;</span><span class="p">]</span><span class="err">
+</span></code></pre></div><h3 id="不安装不需要的东西">不安装不需要的东西</h3>
+<p>尽量最小化安装，降低复杂度。构建依赖应该及时清理掉，仅保留运行时依赖。
+比如使用 &ndash;no-install-recommends 参数告诉 apt-get 不要安装推荐的软件包
+安装完软件包及时清理/var/lib/apt/list/ 缓存
+删除中间文件：比如下载的压缩包
+删除临时文件：如果命令产生了临时文件，也要及时删除</p>
+<p>案例</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-Dockerfile" data-lang="Dockerfile">...<span class="err">
+</span><span class="err"></span><span class="k">FROM</span><span class="s"> debian:9</span><span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="k">RUN</span> apt-get update <span class="o">&amp;&amp;</span> <span class="se">\
+</span><span class="se"></span>    apt-get install -y <span class="se">\
+</span><span class="se"></span>    <span class="o">[</span>buildpackage<span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="se">\
+</span><span class="se"></span>    <span class="o">[</span>build my app<span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="se">\
+</span><span class="se"></span>    apt-get autoremove --purge <span class="se">\
+</span><span class="se"></span>    -y <span class="o">[</span>buildpackage<span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="se">\
+</span><span class="se"></span>    apt-get -y clean <span class="o">&amp;&amp;</span> <span class="se">\
+</span><span class="se"></span>    rm -rf /var/lib/apt/lists/*<span class="err">
+</span></code></pre></div><h3 id="单一应用">单一应用</h3>
+<p>一个容器应该仅包含一个进程，以便于水平伸缩和容器复用。</p>
+<h3 id="最小化层数">最小化层数</h3>
+<p>只有<code>RUN</code>,<code>COPY</code>,<code>ADD</code>会创建镜像层，其他的会构建临时镜像，不会增加build的大小。<br>
+因此，应该尽可能少的使用这些命令，比如安装多个软件包，应该通过 <code>&amp;&amp;</code>串起来执行。
+除此之外，应该是用多阶段构建的方式减少层数。</p>
+<h3 id="多行参数排序">多行参数排序</h3>
+<p>便于去重和更新，也便于阅读。使用<code>\</code>进行换行</p>
+<p>案例</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-Dockerfile" data-lang="Dockerfile"><span class="k">RUN</span> apt-get update <span class="o">&amp;&amp;</span> apt-get install -y <span class="se">\
+</span><span class="se"></span>  bzr <span class="se">\
+</span><span class="se"></span>  cvs <span class="se">\
+</span><span class="se"></span>  git <span class="se">\
+</span><span class="se"></span>  mercurial <span class="se">\
+</span><span class="se"></span>  subversion <span class="se">\
+</span><span class="se"></span>  <span class="o">&amp;&amp;</span> rm -rf /var/lib/apt/lists/*<span class="err">
+</span></code></pre></div><h3 id="利用构建缓存">利用构建缓存</h3>
+<p>image build会根据Dockerfile的顺序执行，在检查每个指令时，Docker会在缓存中查找可以复用的现有镜像，而不是重新创建一个临时镜像。<br>
+基本规则如下</p>
+<ul>
+<li>从已经存在缓存的父镜像开始，下一条指令与该基础镜像派生的所有子镜像进行比较，查看其中一个是否是使用完全相同的指令构建的，不是的话则缓存无效。</li>
+<li><code>ADD</code>和<code>COPY</code>指令会对每个文件进行校验和检查以确定是否匹配缓存，校验和不考虑文件ctime和mtime。如果校验和不一致，则缓存无效。</li>
+<li>除了<code>ADD</code>和<code>COPY</code>之外，容器不会检查文件进行匹配。比如<code>RUN apt-get -y update</code>不会检查更新文件，只会通过命令字符串匹配。</li>
+</ul>
+<h3 id="使用尽可能小的基础镜像">使用尽可能小的基础镜像</h3>
+<p>基础镜像越小，生成的镜像越小，构建速度越快，比如<code>alpine</code></p>
+<h3 id="一个完整示例">一个完整示例</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-Dockerfile" data-lang="Dockerfile"><span class="c">#</span><span class="err">
+</span><span class="err"></span><span class="k">FROM</span><span class="s"> debian:buster-slim</span><span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="c">######## set -e 用于故障调试，命令结果不为0则直接退出</span><span class="err">
+</span><span class="err"></span><span class="c">######## set -x 用于问题调试，输出更多明细</span><span class="err">
+</span><span class="err"></span><span class="k">RUN</span> <span class="nb">set</span> -ex <span class="se">\
+</span><span class="se"></span>    <span class="o">&amp;&amp;</span> addgroup --system --gid <span class="m">101</span> nginx <span class="se">\
+</span><span class="se"></span><span class="c1">######## 创建运行时用户，不可登录，无默认shell,不创建家目录。</span><span class="err">
+</span><span class="err"></span>    <span class="o">&amp;&amp;</span> adduser --system --disabled-login --ingroup nginx --no-create-home --home /nonexistent --gecos <span class="s2">&#34;nginx user&#34;</span> --shell /bin/false --uid <span class="m">101</span> nginx <span class="se">\
+</span><span class="se"></span><span class="c1">######## 构建依赖进行排序</span><span class="err">
+</span><span class="err"></span>    <span class="o">&amp;&amp;</span> <span class="nv">buildDeps</span><span class="o">=</span><span class="s2">&#34;a1 b1 c1&#34;</span> <span class="se">\
+</span><span class="se"></span>    <span class="o">&amp;&amp;</span> apt-get update <span class="se">\
+</span><span class="se"></span><span class="c1">####### 使用--no-install-recommends --no-install-suggests来避免安装不必要的软件包</span><span class="err">
+</span><span class="err"></span>    <span class="o">&amp;&amp;</span> apt-get install --no-install-recommends --no-install-suggests -y <span class="nv">$buildDeps</span> <span class="se">\
+</span><span class="se"></span><span class="c1">######## 使用 apt-mark manual可以将手动安装的软件更新为自动安装的，后续通过purge --auto-remove自动清理不需要的依赖</span><span class="err">
+</span><span class="err"></span>    <span class="o">&amp;&amp;</span> <span class="nv">savedAptMark</span><span class="o">=</span><span class="s2">&#34;</span><span class="k">$(</span>apt-mark showmanual<span class="k">)</span><span class="s2">&#34;</span> <span class="se">\
+</span><span class="se"></span>    <span class="o">&amp;&amp;</span> apt-mark showmanual <span class="p">|</span> xargs apt-mark auto &gt; /dev/null <span class="se">\
+</span><span class="se"></span>    <span class="o">&amp;&amp;</span> <span class="o">{</span> <span class="o">[</span> -z <span class="s2">&#34;</span><span class="nv">$savedAptMark</span><span class="s2">&#34;</span> <span class="o">]</span> <span class="o">||</span> apt-mark manual <span class="nv">$savedAptMark</span><span class="p">;</span> <span class="o">}</span> <span class="se">\
+</span><span class="se"></span><span class="c1">######## apt-get remove --purge --auto-remove -y 可以清理掉不需要的安装依赖，只保留运行时软件</span><span class="err">
+</span><span class="err"></span><span class="c">######## 清理apt的安装缓存 rm -rf /var/lib/apt/lists/*</span><span class="err">
+</span><span class="err"></span>    <span class="o">&amp;&amp;</span> apt-get remove --purge --auto-remove -y <span class="o">&amp;&amp;</span> rm -rf /var/lib/apt/lists/*<span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="k">COPY</span> docker-entrypoint.sh /<span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="k">ENTRYPOINT</span> <span class="p">[</span><span class="s2">&#34;/docker-entrypoint.sh&#34;</span><span class="p">]</span><span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="k">EXPOSE</span><span class="s"> 80</span><span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="k">STOPSIGNAL</span><span class="s"> SIGQUIT</span><span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="k">CMD</span> <span class="p">[</span><span class="s2">&#34;nginx&#34;</span><span class="p">,</span> <span class="s2">&#34;-g&#34;</span><span class="p">,</span> <span class="s2">&#34;daemon off;&#34;</span><span class="p">]</span><span class="err">
+</span></code></pre></div><hr>
+<h2 id="容器运维最佳实践">容器运维最佳实践</h2>
+<h3 id="使用容器的原生日志机制">使用容器的原生日志机制</h3>
+<p>容器提供了一种简单且标准化的日志处理方式，一般应用可以通过写入<code>stdin</code>和<code>stderr</code>中，使用 <code>docker logs</code>可以查看。在k8s中，可以通过fluent-bit进行收集，进一步转发到其他日志系统中，比如Fluentd,EFK。</p>
+<p>这种标准一般采用json格式，可读性稍差。</p>
+<p>对于一些不好写入<code>stdin</code>和<code>stderr</code>的应用，比如tomcat,可以通过边车模式配置一个专门用于收集日志和处理日志轮询的容器。
+<figure style="flex-grow: 116; flex-basis: 279px">
+		<a href="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar.jpeg" data-size="438x376"><img src="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar.jpeg"
+				srcset="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar_hu29c20fb19d2aaa59a3207076dda60f90_22282_480x0_resize_q75_box.jpeg 480w, /p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar_hu29c20fb19d2aaa59a3207076dda60f90_22282_1024x0_resize_q75_box.jpeg 1024w"
+				width="438"
+				height="376"
+				loading="lazy"
+				alt="sidecar">
+		</a>
+		
+		<figcaption>sidecar</figcaption>
+		
+	</figure></p>
+<h3 id="确保容器无状态且不可变">确保容器无状态且不可变</h3>
+<p>无状态并不是不可以有状态，而是任何状态（任何类型的持久性数据）均存储在容器之外，比如持久卷中。<br>
+不变性是指容器在其生命周期内不会被修改。如果应用更新，则需要重建容器。这样容器部署更安全，可重复性更高。</p>
+<p>对于一些外部变量，可以通过<code>configmap</code>或<code>secrets</code>的方式进行装载。</p>
+<h3 id="避免使用特权容器">避免使用特权容器</h3>
+<p>特权容器可以访问主机所有容器，绕过容器的所有安全功能。使用<code>K8sPSPPrivilegedContainer</code>可以限制特权容器运行。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">constraints.gatekeeper.sh/v1beta1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">K8sPSPPrivilegedContainer</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">psp-privileged-container</span><span class="w">
+</span><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">match</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">kinds</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">apiGroups</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;&#34;</span><span class="p">]</span><span class="w">
+</span><span class="w">        </span><span class="nt">kinds</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;Pod&#34;</span><span class="p">]</span><span class="w">
+</span><span class="w">    </span><span class="nt">excludedNamespaces</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;kube-system&#34;</span><span class="p">]</span><span class="w">
+</span></code></pre></div><h3 id="使应用易与监控">使应用易与监控</h3>
+<p>传统监控类型包括黑盒监控和白盒监控两种。</p>
+<p>黑盒监控是指从外部检查应用的可用性，容器应用和传统应用没有区别。</p>
+<p>白盒监控指使用某种特别访问权限检查应用，并收集终端用户无法查看到的行为指标。一般使用prometheus方案，请求应用的暴露的监控端点，比如<code>/metrics</code>url。</p>
+<p>有些应用无法实现http端点模式，此类可以通过边车模式，比如java类应用可以通过jmx_exporter边车容器来协助暴露监控数据，再提供给prometheus。
+<figure style="flex-grow: 145; flex-basis: 349px">
+		<a href="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus.png" data-size="901x619"><img src="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus.png"
+				srcset="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus_hu6f45ccac5d453a9351222f595a8d33e9_53358_480x0_resize_box_3.png 480w, /p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus_hu6f45ccac5d453a9351222f595a8d33e9_53358_1024x0_resize_box_3.png 1024w"
+				width="901"
+				height="619"
+				loading="lazy"
+				alt="exporter">
+		</a>
+		
+		<figcaption>exporter</figcaption>
+		
+	</figure></p>
+<h3 id="公开应用的运行情况">公开应用的运行情况</h3>
+<p>其实就是探针，包括健康探针，就续探针，此处不再赘述。</p>
+<h3 id="避免以root身份运行">避免以root身份运行</h3>
+<p>主要是因为容器使用的还是主机的内核，存在主机获权的风险。</p>
+<h3 id="谨慎选择镜像版本">谨慎选择镜像版本</h3>
+<p>使用版本tag,明确版本号。尤为注意的是，尽量不要使用latest，可能由于版本变更大导致无法运行的风险。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="l">FROM supersoft:1.2.3</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="l">RUN a-command</span><span class="w">
+</span></code></pre></div><h1 id="参考文档">参考文档</h1>
+<ol>
+<li><a class="link" href="https://cloud.google.com/architecture/best-practices-for-building-containers?hl=zh_cn"  target="_blank" rel="noopener"
+    >https://cloud.google.com/architecture/best-practices-for-building-containers?hl=zh_cn</a></li>
+<li><a class="link" href="https://cloud.google.com/architecture/best-practices-for-operating-containers?hl=zh_cn"  target="_blank" rel="noopener"
+    >https://cloud.google.com/architecture/best-practices-for-operating-containers?hl=zh_cn</a></li>
+<li><a class="link" href="https://docs.docker.com/develop/develop-images/dockerfile_best-practices/"  target="_blank" rel="noopener"
+    >https://docs.docker.com/develop/develop-images/dockerfile_best-practices/</a></li>
+</ol>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/%E5%AE%B9%E5%99%A8/">容器</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">部署策略及容器化实现</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/">
+        
+        
+            <div class="article-image">
+                <img src="/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/cmd.3a98d9a5eb6c40084d7f8312c61175d1_hu6e16d3621c69d4baadb7f1b7e4fbf505_28691_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-OpjZpetsQAhNf4MSxhF10Q==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">CMD和ENTRYPOINT的配置比对详解</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/container.f6e588456d243f6b3691eae8fbb21613_hued08ec2480e5693b7d58c33103917ef1_43947_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-9uWIRW0kP2s2kero&#43;7IWEw==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">应用容器化改造的设计原则及模式</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/lake.b7b25110b382cae3afb4e59ab416fe18_hu4a54f6cc00d4e0599bb1fb51fbd2eda0_63589_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-t7JRELOCyuOvtOWatBb&#43;GA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">数据湖及其相关概念性调研</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%B5%85%E8%B0%88chatops/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%B5%85%E8%B0%88chatops/chatops.047fdca1683487486942824c5121858c_hu2af93606f657e048f3b8c35cecf8603a_39849_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-BH/coWg0h0hpQoJMUSGFjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">浅谈ChatOps</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+     
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2021 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">Table of contents</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#容器构建最佳实践">容器构建最佳实践</a>
+      <ol>
+        <li><a href="#容器的临时性">容器的临时性</a></li>
+        <li><a href="#容器构建上下文">容器构建上下文</a></li>
+        <li><a href="#通过标准输出管道构建">通过标准输出管道构建</a>
+          <ol>
+            <li><a href="#build-context">build context</a></li>
+            <li><a href="#dockerfile">Dockerfile</a></li>
+            <li><a href="#remote-build-context">remote build context</a></li>
+          </ol>
+        </li>
+        <li><a href="#使用dockerignore排除文件">使用.dockerignore排除文件</a></li>
+        <li><a href="#多阶段构建">多阶段构建</a></li>
+        <li><a href="#不安装不需要的东西">不安装不需要的东西</a></li>
+        <li><a href="#单一应用">单一应用</a></li>
+        <li><a href="#最小化层数">最小化层数</a></li>
+        <li><a href="#多行参数排序">多行参数排序</a></li>
+        <li><a href="#利用构建缓存">利用构建缓存</a></li>
+        <li><a href="#使用尽可能小的基础镜像">使用尽可能小的基础镜像</a></li>
+        <li><a href="#一个完整示例">一个完整示例</a></li>
+      </ol>
+    </li>
+    <li><a href="#容器运维最佳实践">容器运维最佳实践</a>
+      <ol>
+        <li><a href="#使用容器的原生日志机制">使用容器的原生日志机制</a></li>
+        <li><a href="#确保容器无状态且不可变">确保容器无状态且不可变</a></li>
+        <li><a href="#避免使用特权容器">避免使用特权容器</a></li>
+        <li><a href="#使应用易与监控">使应用易与监控</a></li>
+        <li><a href="#公开应用的运行情况">公开应用的运行情况</a></li>
+        <li><a href="#避免以root身份运行">避免以root身份运行</a></li>
+        <li><a href="#谨慎选择镜像版本">谨慎选择镜像版本</a></li>
+      </ol>
+    </li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

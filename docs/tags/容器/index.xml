@@ -99,5 +99,23 @@ kubernetes这类平台为了方便管理容器的生命周期，会产生各种�
 运行时限制原则  RUNTIME CONFINEMENT PRINCIPLE  容器运行时所需的任何硬件资源，比如cpu,mem等，应该做好配额管理，包括使用量声明和实际使用限制。 这个原则主要是为了便于资源调度，弹性伸缩等。</description>
     </item>
     
+    <item>
+      <title>容器最佳实践</title>
+      <link>http://tinohean.top/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/</link>
+      <pubDate>Sat, 25 Aug 2018 18:06:32 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/</guid>
+      <description>容器构建最佳实践 容器的临时性 这个原则意味着容器可以被随时暂停，销毁，然后重建。容器是无状态的。有状态的数据应该持久化到后端服务中。
+容器构建上下文 build context指docker build执行时的当前目录，默认会找context的Dockerfile进行构建，也可以手动-f指定Dockerfile文件,也可以指定构建目录。
+当前目录的所有目录和文件都会被发送到docker daemon当作构建的上下文，过多、过大的文件都会使得镜像构建时间加长，镜像大小变大。
+因此，build context中应该只包含最少的文件。
+通过标准输出管道构建 build context build context可以是stdin，通过管道传递，这样的好处是不需要传送额外的文件，提升构建速度。
+docker build -&amp;lt;&amp;lt;EOF FROM busybox RUN echo &amp;#34;hello world&amp;#34; EOF 不过只限于一些简单的构建场景，使用这种方式不可以COPY或者ADD其他文件。
+Dockerfile Dockerfile也可以是stdin，但能实现上述的方式更复杂些的操作，可以使用COPY、ADD。
+docker build -t myimage:latest -f- . &amp;lt;&amp;lt;EOF FROM busybox COPY somefile.txt ./ RUN cat /somefile.txt EOF remote build context 构建上下文可以使用远程地址，适用于一些场景比如git等。
+docker build -t myimage:latest -f- https://github.com/docker-library/hello-world.git &amp;lt;&amp;lt;EOF FROM busybox COPY hello.c ./ EOF 使用.dockerignore排除文件 同.gitignore类似，docker build也可以通过配置.dockerignore文件排除掉不需要的文件。 格式
+# comment */temp* */*/temp* temp?</description>
+    </item>
+    
   </channel>
 </rss>

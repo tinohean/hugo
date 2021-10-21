@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>大数据 on 半岛无风</title>
+    <link>http://tinohean.top/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/</link>
+    <description>Recent content in 大数据 on 半岛无风</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 15 Oct 2021 13:36:46 +0800</lastBuildDate><atom:link href="http://tinohean.top/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>数据湖及其相关概念性调研</title>
+      <link>http://tinohean.top/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/</link>
+      <pubDate>Fri, 15 Oct 2021 13:36:46 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/</guid>
+      <description>数据湖概念性调研 近期数仓建设统一实时数据系统和离线报表无从着手，亟需进行架构上的升级。以下是针对传统数仓的痛点而产生的数据湖概念性调研，也包括一些大数据基本概念的阐述。
+数据仓库   数据库(Database)
+传统的关系型数据库的主要应用是联机事务处理OLTP（On-Line Transaction Processing），主要是基本的、日常的事务处理，例如业务报表。 常见的Mysql,Oracle,MariaDB等。
+  数据仓库(Datawarehouse)
+数据仓库系统的主要应用主要是OLAP（On-Line Analytical Processing），支持复杂的分析操作，侧重决策支持，并且提供直观易懂的查询结果。 常见的Hive，Druid等。
+  E.F.Codd提出了关于OLAP的12条准则：
+ OLAP模型必须提供多维概念视图 透明性准则 存取能力准则 稳定的报表能力 客户/服务器体系结构 维的等同性准则 动态的稀疏矩阵处理准则 多用户支持能力准则 非受限的跨维操作 直观的数据操纵 灵活的报表生成 不受限的维与聚集层次  数据分层 数据分层的目的
+ 清晰数据结构
+每一个数据分层都有它的作用域，这样我们在使用表的时候能更方便地定位和理解。 数据血缘追踪
+简单来讲可以这样理解，我们最终给业务呈现的是一张能直接使用的业务表，但是它的来源有很多，如果有一张来源表出问题了，我们希望能够快速准确地定位到问题，并清楚它的危害范围。 减少重复开发
+规范数据分层，开发一些通用的中间层数据，能够减少极大的重复计算。 把复杂问题简单化
+把一个复杂的任务分解成多个步骤来完成，每一层只处理单一的步骤，比较简单和容易理解。而且便于维护数据的准确性，当数据出现问题之后，可以不用修复所有的数据，只需要从有问题的步骤开始修复。 屏蔽原始数据的异常
+屏蔽业务的影响，不必改一次业务就需要重新接入数据。  收益   清晰数据结构 每一个数据分层都有它的作用域和职责，在使用表的时候能更方便地定位和理解
+  减少重复开发 规范数据分层，开发一些通用的中间层数据，能够减少极大的重复计算
+  统一数据口径
+通过数据分层，提供统一的数据出口，统一对外输出的数据口径
+  复杂问题简单化
+将一个复杂的任务分解成多个步骤来完成，每一层解决特定的问题
+  分层设计 [ODS] -&amp;gt; [DW] -&amp;gt; [APP]  数据运营层（ ODS ）</description>
+    </item>
+    
+  </channel>
+</rss>

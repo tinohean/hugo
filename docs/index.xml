@@ -6,7 +6,33 @@
         <description>Recent content on 半岛无风</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en-us</language>
-        <lastBuildDate>Tue, 21 Sep 2021 23:11:56 +0800</lastBuildDate><atom:link href="http://tinohean.top/index.xml" rel="self" type="application/rss+xml" /><item>
+        <lastBuildDate>Fri, 15 Oct 2021 13:36:46 +0800</lastBuildDate><atom:link href="http://tinohean.top/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>数据湖及其相关概念性调研</title>
+        <link>http://tinohean.top/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/</link>
+        <pubDate>Fri, 15 Oct 2021 13:36:46 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/lake.jpeg" alt="Featured image of post 数据湖及其相关概念性调研" /&gt;数据湖概念性调研 近期数仓建设统一实时数据系统和离线报表无从着手，亟需进行架构上的升级。以下是针对传统数仓的痛点而产生的数据湖概念性调研，也包括一些大数据基本概念的阐述。
+数据仓库   数据库(Database)
+传统的关系型数据库的主要应用是联机事务处理OLTP（On-Line Transaction Processing），主要是基本的、日常的事务处理，例如业务报表。 常见的Mysql,Oracle,MariaDB等。
+  数据仓库(Datawarehouse)
+数据仓库系统的主要应用主要是OLAP（On-Line Analytical Processing），支持复杂的分析操作，侧重决策支持，并且提供直观易懂的查询结果。 常见的Hive，Druid等。
+  E.F.Codd提出了关于OLAP的12条准则：
+ OLAP模型必须提供多维概念视图 透明性准则 存取能力准则 稳定的报表能力 客户/服务器体系结构 维的等同性准则 动态的稀疏矩阵处理准则 多用户支持能力准则 非受限的跨维操作 直观的数据操纵 灵活的报表生成 不受限的维与聚集层次  数据分层 数据分层的目的
+ 清晰数据结构
+每一个数据分层都有它的作用域，这样我们在使用表的时候能更方便地定位和理解。 数据血缘追踪
+简单来讲可以这样理解，我们最终给业务呈现的是一张能直接使用的业务表，但是它的来源有很多，如果有一张来源表出问题了，我们希望能够快速准确地定位到问题，并清楚它的危害范围。 减少重复开发
+规范数据分层，开发一些通用的中间层数据，能够减少极大的重复计算。 把复杂问题简单化
+把一个复杂的任务分解成多个步骤来完成，每一层只处理单一的步骤，比较简单和容易理解。而且便于维护数据的准确性，当数据出现问题之后，可以不用修复所有的数据，只需要从有问题的步骤开始修复。 屏蔽原始数据的异常
+屏蔽业务的影响，不必改一次业务就需要重新接入数据。  收益   清晰数据结构 每一个数据分层都有它的作用域和职责，在使用表的时候能更方便地定位和理解
+  减少重复开发 规范数据分层，开发一些通用的中间层数据，能够减少极大的重复计算
+  统一数据口径
+通过数据分层，提供统一的数据出口，统一对外输出的数据口径
+  复杂问题简单化
+将一个复杂的任务分解成多个步骤来完成，每一层解决特定的问题
+  分层设计 [ODS] -&amp;gt; [DW] -&amp;gt; [APP]  数据运营层（ ODS ）</description>
+        </item>
+        <item>
         <title>部署策略及容器化实现</title>
         <link>http://tinohean.top/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/</link>
         <pubDate>Tue, 21 Sep 2021 23:11:56 +0800</pubDate>
@@ -248,6 +274,23 @@ kubernetes这类平台为了方便管理容器的生命周期，会产生各种�
 无状态的应用是最适合容器化的，当然有状态的应用也可以通过外部持久卷的方式存储运行时数据来实现这一原则。
 自包含原则  SELF-CONTAINMENT PRINCIPLE  容器作为一个黑盒环境，除了Linux内核外，应该不依赖于任何外部依赖。镜像应该打包了所有应用运行所需的库文件，语言环境等。
 运行时限制原则  RUNTIME CONFINEMENT PRINCIPLE  容器运行时所需的任何硬件资源，比如cpu,mem等，应该做好配额管理，包括使用量声明和实际使用限制。 这个原则主要是为了便于资源调度，弹性伸缩等。</description>
+        </item>
+        <item>
+        <title>容器最佳实践</title>
+        <link>http://tinohean.top/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/</link>
+        <pubDate>Sat, 25 Aug 2018 18:06:32 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/best-practice.jpeg" alt="Featured image of post 容器最佳实践" /&gt;容器构建最佳实践 容器的临时性 这个原则意味着容器可以被随时暂停，销毁，然后重建。容器是无状态的。有状态的数据应该持久化到后端服务中。
+容器构建上下文 build context指docker build执行时的当前目录，默认会找context的Dockerfile进行构建，也可以手动-f指定Dockerfile文件,也可以指定构建目录。
+当前目录的所有目录和文件都会被发送到docker daemon当作构建的上下文，过多、过大的文件都会使得镜像构建时间加长，镜像大小变大。
+因此，build context中应该只包含最少的文件。
+通过标准输出管道构建 build context build context可以是stdin，通过管道传递，这样的好处是不需要传送额外的文件，提升构建速度。
+docker build -&amp;lt;&amp;lt;EOF FROM busybox RUN echo &amp;#34;hello world&amp;#34; EOF 不过只限于一些简单的构建场景，使用这种方式不可以COPY或者ADD其他文件。
+Dockerfile Dockerfile也可以是stdin，但能实现上述的方式更复杂些的操作，可以使用COPY、ADD。
+docker build -t myimage:latest -f- . &amp;lt;&amp;lt;EOF FROM busybox COPY somefile.txt ./ RUN cat /somefile.txt EOF remote build context 构建上下文可以使用远程地址，适用于一些场景比如git等。
+docker build -t myimage:latest -f- https://github.com/docker-library/hello-world.git &amp;lt;&amp;lt;EOF FROM busybox COPY hello.c ./ EOF 使用.dockerignore排除文件 同.gitignore类似，docker build也可以通过配置.dockerignore文件排除掉不需要的文件。 格式
+# comment */temp* */*/temp* temp?</description>
         </item>
         <item>
         <title>监控方案-druid篇</title>
