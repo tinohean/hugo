@@ -298,11 +298,13 @@ temp?
 </span><span class="se"></span>    <span class="o">&amp;&amp;</span> addgroup --system --gid <span class="m">101</span> nginx <span class="se">\
 </span><span class="se"></span><span class="c1">######## 创建运行时用户，不可登录，无默认shell,不创建家目录。</span><span class="err">
 </span><span class="err"></span>    <span class="o">&amp;&amp;</span> adduser --system --disabled-login --ingroup nginx --no-create-home --home /nonexistent --gecos <span class="s2">&#34;nginx user&#34;</span> --shell /bin/false --uid <span class="m">101</span> nginx <span class="se">\
-</span><span class="se"></span><span class="c1">######## 构建依赖进行排序</span><span class="err">
+</span><span class="se"></span><span class="c1">######## 构建依赖和运行时依赖通过变量声明</span><span class="err">
+</span><span class="err"></span><span class="c">######## 构建依赖进行排序, 运行时依赖进行排序</span><span class="err">
 </span><span class="err"></span>    <span class="o">&amp;&amp;</span> <span class="nv">buildDeps</span><span class="o">=</span><span class="s2">&#34;a1 b1 c1&#34;</span> <span class="se">\
+</span><span class="se"></span>    <span class="o">&amp;&amp;</span> <span class="nv">runtimeDeps</span><span class="o">=</span><span class="s2">&#34;1a 1b 1c&#34;</span> <span class="se">\
 </span><span class="se"></span>    <span class="o">&amp;&amp;</span> apt-get update <span class="se">\
 </span><span class="se"></span><span class="c1">####### 使用--no-install-recommends --no-install-suggests来避免安装不必要的软件包</span><span class="err">
-</span><span class="err"></span>    <span class="o">&amp;&amp;</span> apt-get install --no-install-recommends --no-install-suggests -y <span class="nv">$buildDeps</span> <span class="se">\
+</span><span class="err"></span>    <span class="o">&amp;&amp;</span> apt-get install --no-install-recommends --no-install-suggests -y <span class="nv">$buildDeps</span> <span class="nv">$runtimeDeps</span> <span class="se">\
 </span><span class="se"></span><span class="c1">######## 使用 apt-mark manual可以将手动安装的软件更新为自动安装的，后续通过purge --auto-remove自动清理不需要的依赖</span><span class="err">
 </span><span class="err"></span>    <span class="o">&amp;&amp;</span> <span class="nv">savedAptMark</span><span class="o">=</span><span class="s2">&#34;</span><span class="k">$(</span>apt-mark showmanual<span class="k">)</span><span class="s2">&#34;</span> <span class="se">\
 </span><span class="se"></span>    <span class="o">&amp;&amp;</span> apt-mark showmanual <span class="p">|</span> xargs apt-mark auto &gt; /dev/null <span class="se">\
