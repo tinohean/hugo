@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='雪山 上个月我在公司内部做了一次关于docker的技术分享，主题就是简单介绍下docker的技术原理及使用。在做PPT的时候，我发现这并不是一个那么容易的事情。
+难点其一是技术原理的理解。与研发不同的是，运维平时并不注重深入了解技术实现这一块。对于工具型的技术方案，一般仅限于了解其大概的模块框架，并不具备对外者讲解清楚技术封装的基本能力。这样的学习模式好处是上手快，翻翻文档很容易就部署一套完整的体系。坏处也显而易见，遇到系统性的问题很难有思路去排查，对于配置也是照本宣科，依靠百度和谷歌解决大部分问题。而对于传统运维来讲，系统底层技术面的匮乏，加上代码阅读能力较低，能够深入了解一个技术框架的实现并不是一件很轻松的事情。
+难点其二是分享本身。分享之所以成为分享，其核心的逻辑是先自我消化，然后再通过讲解的方式阐述消化的内容。这一吞吐的过程势必暴露分享者的技术储备。同时，讲解者必须具备一定的逻辑和分析能力 ，将脑中形成的技术面归纳通过文图的形式条理化，具象化。将复杂的事情简单讲解出来是一个需要持久化练习的能力。人类本身讨厌一切复杂的事情。我更喜欢类比这个学习方法。类比的过程可以将抽象的层面具象化，更容易理解和记忆。然而技术上的理解，很难有类比的对象。我只能尝试用概括的方式把消化掉的一堆堆的文档和技术文章精炼为几个简单的图表。
+分享是一个自我思考及重复记忆的过程。在准备技术原理的过程中，我推翻了很多之前的技术误解，也消除了一些模棱两可的问题，对于docker的整体认知更加全面。除此之外，这一次分享把脑中的技术记忆渗入了更为底层的维度。而学习正是从理解到重复记忆最后到实践的过程。
+我的短板在系统化，基础。学的太杂而不深入，大部分技术都是浅尝辄止。可能也是很多运维的通病吧。写作可以强迫我去渗透，总结，记录。
+突然想起高中时读过的海子的一首诗 《最后一夜和第一日的献诗》
+今夜你的黑头发
+是岩石上寂寞的黑夜
+牧羊人用雪白的羊群
+填满飞机场周同的黑暗
+黑夜比我更早睡去
+黑夜是神的伤口
+你是我的伤口
+羊群和花朵也是岩石的伤口
+雪山 用大雪填满飞机场周围的黑暗
+雪山女神吃的是野兽穿的是鲜花
+今夜九十九座雪山高出天堂
+使我彻夜难眠
+在当年词汇匮乏的我心里留下了史诗般的具象。雪山这一画面感极强的描述简直惊为天人。这就是诗歌的魅力，也是海子的天才，简单的几个词语的使用，就能形成如此诗化的意境。海子心中的雪山真实的欲求是什么，我们已经无从知道了。然而，仅仅从意象而言，诗歌本身就有了意义。把脑中的画面形象地描述出来，写作者追求的终极目的之一无非是这样的境界了吧。为此，我决定开设个人网站，把内心所想化作一座座雪山。
+或许哪天，你看到这些文字，知晓了我当时的心境。那么，你也曾抵达我的峰顶。'><title>【随笔】雪山</title>
+
+<link rel='canonical' href='http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/'>
+
+<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='【随笔】雪山'>
+<meta property='og:description' content='雪山 上个月我在公司内部做了一次关于docker的技术分享，主题就是简单介绍下docker的技术原理及使用。在做PPT的时候，我发现这并不是一个那么容易的事情。
+难点其一是技术原理的理解。与研发不同的是，运维平时并不注重深入了解技术实现这一块。对于工具型的技术方案，一般仅限于了解其大概的模块框架，并不具备对外者讲解清楚技术封装的基本能力。这样的学习模式好处是上手快，翻翻文档很容易就部署一套完整的体系。坏处也显而易见，遇到系统性的问题很难有思路去排查，对于配置也是照本宣科，依靠百度和谷歌解决大部分问题。而对于传统运维来讲，系统底层技术面的匮乏，加上代码阅读能力较低，能够深入了解一个技术框架的实现并不是一件很轻松的事情。
+难点其二是分享本身。分享之所以成为分享，其核心的逻辑是先自我消化，然后再通过讲解的方式阐述消化的内容。这一吞吐的过程势必暴露分享者的技术储备。同时，讲解者必须具备一定的逻辑和分析能力 ，将脑中形成的技术面归纳通过文图的形式条理化，具象化。将复杂的事情简单讲解出来是一个需要持久化练习的能力。人类本身讨厌一切复杂的事情。我更喜欢类比这个学习方法。类比的过程可以将抽象的层面具象化，更容易理解和记忆。然而技术上的理解，很难有类比的对象。我只能尝试用概括的方式把消化掉的一堆堆的文档和技术文章精炼为几个简单的图表。
+分享是一个自我思考及重复记忆的过程。在准备技术原理的过程中，我推翻了很多之前的技术误解，也消除了一些模棱两可的问题，对于docker的整体认知更加全面。除此之外，这一次分享把脑中的技术记忆渗入了更为底层的维度。而学习正是从理解到重复记忆最后到实践的过程。
+我的短板在系统化，基础。学的太杂而不深入，大部分技术都是浅尝辄止。可能也是很多运维的通病吧。写作可以强迫我去渗透，总结，记录。
+突然想起高中时读过的海子的一首诗 《最后一夜和第一日的献诗》
+今夜你的黑头发
+是岩石上寂寞的黑夜
+牧羊人用雪白的羊群
+填满飞机场周同的黑暗
+黑夜比我更早睡去
+黑夜是神的伤口
+你是我的伤口
+羊群和花朵也是岩石的伤口
+雪山 用大雪填满飞机场周围的黑暗
+雪山女神吃的是野兽穿的是鲜花
+今夜九十九座雪山高出天堂
+使我彻夜难眠
+在当年词汇匮乏的我心里留下了史诗般的具象。雪山这一画面感极强的描述简直惊为天人。这就是诗歌的魅力，也是海子的天才，简单的几个词语的使用，就能形成如此诗化的意境。海子心中的雪山真实的欲求是什么，我们已经无从知道了。然而，仅仅从意象而言，诗歌本身就有了意义。把脑中的画面形象地描述出来，写作者追求的终极目的之一无非是这样的境界了吧。为此，我决定开设个人网站，把内心所想化作一座座雪山。
+或许哪天，你看到这些文字，知晓了我当时的心境。那么，你也曾抵达我的峰顶。'>
+<meta property='og:url' content='http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='随笔' /><meta property='article:published_time' content='2017-04-02T18:16:30&#43;08:00'/><meta property='article:modified_time' content='2017-04-02T18:16:30&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/snowmountain.png' />
+<meta name="twitter:title" content="【随笔】雪山">
+<meta name="twitter:description" content="雪山 上个月我在公司内部做了一次关于docker的技术分享，主题就是简单介绍下docker的技术原理及使用。在做PPT的时候，我发现这并不是一个那么容易的事情。
+难点其一是技术原理的理解。与研发不同的是，运维平时并不注重深入了解技术实现这一块。对于工具型的技术方案，一般仅限于了解其大概的模块框架，并不具备对外者讲解清楚技术封装的基本能力。这样的学习模式好处是上手快，翻翻文档很容易就部署一套完整的体系。坏处也显而易见，遇到系统性的问题很难有思路去排查，对于配置也是照本宣科，依靠百度和谷歌解决大部分问题。而对于传统运维来讲，系统底层技术面的匮乏，加上代码阅读能力较低，能够深入了解一个技术框架的实现并不是一件很轻松的事情。
+难点其二是分享本身。分享之所以成为分享，其核心的逻辑是先自我消化，然后再通过讲解的方式阐述消化的内容。这一吞吐的过程势必暴露分享者的技术储备。同时，讲解者必须具备一定的逻辑和分析能力 ，将脑中形成的技术面归纳通过文图的形式条理化，具象化。将复杂的事情简单讲解出来是一个需要持久化练习的能力。人类本身讨厌一切复杂的事情。我更喜欢类比这个学习方法。类比的过程可以将抽象的层面具象化，更容易理解和记忆。然而技术上的理解，很难有类比的对象。我只能尝试用概括的方式把消化掉的一堆堆的文档和技术文章精炼为几个简单的图表。
+分享是一个自我思考及重复记忆的过程。在准备技术原理的过程中，我推翻了很多之前的技术误解，也消除了一些模棱两可的问题，对于docker的整体认知更加全面。除此之外，这一次分享把脑中的技术记忆渗入了更为底层的维度。而学习正是从理解到重复记忆最后到实践的过程。
+我的短板在系统化，基础。学的太杂而不深入，大部分技术都是浅尝辄止。可能也是很多运维的通病吧。写作可以强迫我去渗透，总结，记录。
+突然想起高中时读过的海子的一首诗 《最后一夜和第一日的献诗》
+今夜你的黑头发
+是岩石上寂寞的黑夜
+牧羊人用雪白的羊群
+填满飞机场周同的黑暗
+黑夜比我更早睡去
+黑夜是神的伤口
+你是我的伤口
+羊群和花朵也是岩石的伤口
+雪山 用大雪填满飞机场周围的黑暗
+雪山女神吃的是野兽穿的是鲜花
+今夜九十九座雪山高出天堂
+使我彻夜难眠
+在当年词汇匮乏的我心里留下了史诗般的具象。雪山这一画面感极强的描述简直惊为天人。这就是诗歌的魅力，也是海子的天才，简单的几个词语的使用，就能形成如此诗化的意境。海子心中的雪山真实的欲求是什么，我们已经无从知道了。然而，仅仅从意象而言，诗歌本身就有了意义。把脑中的画面形象地描述出来，写作者追求的终极目的之一无非是这样的境界了吧。为此，我决定开设个人网站，把内心所想化作一座座雪山。
+或许哪天，你看到这些文字，知晓了我当时的心境。那么，你也曾抵达我的峰顶。"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/snowmountain.png' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KZ420DZ0LK"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-KZ420DZ0LK', { 'anonymize_ip': false });
+}
+</script>
+
+    </head>
+    <body class="
+    article-page 
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        on-phone--column compact
+    
+">
+    
+        <aside class="sidebar left-sidebar sticky">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="Toggle Menu">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header class="site-info">
+        
+            
+            <figure class="site-avatar">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hue8e221f39713c0e424c64decda2570e0_159438_300x0_resize_box_3.png" width="300"
+                            height="303" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+
+                
+                    <span class="emoji">🎯</span>
+                
+            </figure>
+            
+        
+        <h1 class="site-name"><a href="http://tinohean.top">半岛无风</a></h1>
+        <h2 class="site-description"></h2>
+    </header>
+
+    <ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/' >
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-home" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="5 12 3 12 12 3 21 12 19 12" />
+  <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
+  <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+</svg>
+
+
+
+                
+                <span>Home</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/archives/' >
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-archive" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <rect x="3" y="4" width="18" height="4" rx="2" />
+  <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-10" />
+  <line x1="10" y1="12" x2="14" y2="12" />
+</svg>
+
+
+
+                
+                <span>Archives</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/' >
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-tag" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11 3L20 12a1.5 1.5 0 0 1 0 2L14 20a1.5 1.5 0 0 1 -2 0L3 11v-4a4 4 0 0 1 4 -4h4" />
+  <circle cx="9" cy="9" r="2" />
+</svg>
+
+
+
+                
+                <span>Tags</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/search/' >
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="10" cy="10" r="7" />
+  <line x1="21" y1="21" x2="15" y2="15" />
+</svg>
+
+
+
+                
+                <span>Search</span>
+            </a>
+        </li>
+        
+
+        
+            <li id="dark-mode-toggle">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                <span>Dark Mode</span>
+            </li>
+        
+    </ol>
+</aside>
+
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/">
+                <img src="/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/snowmountain_huc3a92b42c0177518a8a9285045a91360_599460_800x0_resize_box_3.png"
+                        srcset="/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/snowmountain_huc3a92b42c0177518a8a9285045a91360_599460_800x0_resize_box_3.png 800w, /p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/snowmountain_huc3a92b42c0177518a8a9285045a91360_599460_1600x0_resize_box_3.png 1600w"
+                        width="800" 
+                        height="445" 
+                        loading="lazy"
+                        alt="Featured image of post 【随笔】雪山" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/">【随笔】雪山</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Apr 02, 2017</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    1 min read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h1 id="雪山">雪山</h1>
+<p>上个月我在公司内部做了一次关于docker的技术分享，主题就是简单介绍下docker的技术原理及使用。在做PPT的时候，我发现这并不是一个那么容易的事情。</p>
+<p>难点其一是技术原理的理解。与研发不同的是，运维平时并不注重深入了解技术实现这一块。对于工具型的技术方案，一般仅限于了解其大概的模块框架，并不具备对外者讲解清楚技术封装的基本能力。这样的学习模式好处是上手快，翻翻文档很容易就部署一套完整的体系。坏处也显而易见，遇到系统性的问题很难有思路去排查，对于配置也是照本宣科，依靠百度和谷歌解决大部分问题。而对于传统运维来讲，系统底层技术面的匮乏，加上代码阅读能力较低，能够深入了解一个技术框架的实现并不是一件很轻松的事情。</p>
+<p>难点其二是分享本身。分享之所以成为分享，其核心的逻辑是先自我消化，然后再通过讲解的方式阐述消化的内容。这一吞吐的过程势必暴露分享者的技术储备。同时，讲解者必须具备一定的逻辑和分析能力 ，将脑中形成的技术面归纳通过文图的形式条理化，具象化。将复杂的事情简单讲解出来是一个需要持久化练习的能力。人类本身讨厌一切复杂的事情。我更喜欢类比这个学习方法。类比的过程可以将抽象的层面具象化，更容易理解和记忆。然而技术上的理解，很难有类比的对象。我只能尝试用概括的方式把消化掉的一堆堆的文档和技术文章精炼为几个简单的图表。</p>
+<p>分享是一个自我思考及重复记忆的过程。在准备技术原理的过程中，我推翻了很多之前的技术误解，也消除了一些模棱两可的问题，对于docker的整体认知更加全面。除此之外，这一次分享把脑中的技术记忆渗入了更为底层的维度。而学习正是从理解到重复记忆最后到实践的过程。</p>
+<p>我的短板在系统化，基础。学的太杂而不深入，大部分技术都是浅尝辄止。可能也是很多运维的通病吧。写作可以强迫我去渗透，总结，记录。</p>
+<p>突然想起高中时读过的海子的一首诗 《最后一夜和第一日的献诗》</p>
+<p><em>今夜你的黑头发</em><br>
+<em>是岩石上寂寞的黑夜</em><br>
+<em>牧羊人用雪白的羊群</em><br>
+<em>填满飞机场周同的黑暗</em><br>
+<em>黑夜比我更早睡去</em><br>
+<em>黑夜是神的伤口</em><br>
+<em>你是我的伤口</em><br>
+<em>羊群和花朵也是岩石的伤口</em><br>
+<em>雪山 用大雪填满飞机场周围的黑暗</em><br>
+<em>雪山女神吃的是野兽穿的是鲜花</em><br>
+<em>今夜九十九座雪山高出天堂</em><br>
+<em>使我彻夜难眠</em></p>
+<p>在当年词汇匮乏的我心里留下了史诗般的具象。雪山这一画面感极强的描述简直惊为天人。这就是诗歌的魅力，也是海子的天才，简单的几个词语的使用，就能形成如此诗化的意境。海子心中的雪山真实的欲求是什么，我们已经无从知道了。然而，仅仅从意象而言，诗歌本身就有了意义。把脑中的画面形象地描述出来，写作者追求的终极目的之一无非是这样的境界了吧。为此，我决定开设个人网站，把内心所想化作一座座雪山。</p>
+<p>或许哪天，你看到这些文字，知晓了我当时的心境。那么，你也曾抵达我的峰顶。</p>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/%E9%9A%8F%E7%AC%94/">随笔</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%9A%8F%E7%AC%94soul/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%9A%8F%E7%AC%94soul/soul.1ec3d9ceed2b95e92d1a2f57a754173e_hua5b7a4101002ac3de8aa87e6c8d8ffa6_107809_250x150_fill_q75_box_smart1.JPG" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-HsPZzu0rlektGi9Xp1QXPg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">【随笔】Soul</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/nitendo-switch%E6%B8%B8%E6%88%8F%E6%B8%85%E5%8D%95%E4%B8%8D%E5%AE%9A%E6%9C%9F%E6%9B%B4%E6%96%B0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/nitendo-switch%E6%B8%B8%E6%88%8F%E6%B8%85%E5%8D%95%E4%B8%8D%E5%AE%9A%E6%9C%9F%E6%9B%B4%E6%96%B0/hollow_knight.f80d8420356db4decdc1b1bbcd854964_hue5dd0565eb5a9aa5879d634de1a27c55_568859_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-&#43;A2EIDVttN7NwbG7zYVJZA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Nitendo Switch游戏清单(不定期更新)</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%9A%8F%E7%AC%94%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%9A%8F%E7%AC%94%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/lonely.4b20fa7bc6fb4d6251edddaa9f152533_hu29c20fb19d2aaa59a3207076dda60f90_70248_250x150_fill_q75_box_smart1.jpg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-SyD6e8b7TWJR7d2qnxUlMw==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">【随笔】三十而立</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/lake.b7b25110b382cae3afb4e59ab416fe18_hu4a54f6cc00d4e0599bb1fb51fbd2eda0_63589_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-t7JRELOCyuOvtOWatBb&#43;GA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">数据湖及其相关概念性调研</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">部署策略及容器化实现</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+     
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2021 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

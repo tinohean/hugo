@@ -126,11 +126,11 @@ echo &amp;#39;&amp;#39;&amp;#39;blacklist nouveau options nouveau modeset=0&amp;
     </item>
     
     <item>
-      <title>Soul</title>
-      <link>http://tinohean.top/p/soul/</link>
+      <title>【随笔】Soul</title>
+      <link>http://tinohean.top/p/%E9%9A%8F%E7%AC%94soul/</link>
       <pubDate>Thu, 31 Dec 2020 22:49:03 +0800</pubDate>
       
-      <guid>http://tinohean.top/p/soul/</guid>
+      <guid>http://tinohean.top/p/%E9%9A%8F%E7%AC%94soul/</guid>
       <description>Soul 早早在床上喝奶，她的口头禅变成了巴布，也就是抱抱的意思。
 这是她会说的为数不多的两个字的话。在她的世界里，什么都可以巴布。奶瓶，玩偶，鞋鞋，袜袜……她对她所有爱的事物说巴布，抱着的同时还会学着大人抱她那样摇晃。
 看着很幼稚，却觉得格外美好。
@@ -189,11 +189,11 @@ Alerts Rules blackbox_exporter 常用的只有存活状态和状态码异常告�
     </item>
     
     <item>
-      <title>三十而立</title>
-      <link>http://tinohean.top/p/%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/</link>
+      <title>【随笔】三十而立</title>
+      <link>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/</link>
       <pubDate>Wed, 05 Aug 2020 09:25:29 +0800</pubDate>
       
-      <guid>http://tinohean.top/p/%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/</guid>
+      <guid>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/</guid>
       <description>三十而立 8月5日 台风过境 在家里拉了肚子，疼痛缓解。
 临走的时候早早跟我挥手，我知道她想出去玩。坐上公交车，发现鞋子和裤子湿透，背包湿了一半，眼镜上有零星雨滴。
 卷起了裤腿，就像卷起人生的上半段，一个触目惊心的念头，突然就袭了过来：自己已然走在奔四的路上，时间所剩无几。
@@ -392,11 +392,11 @@ local:
     </item>
     
     <item>
-      <title>雪山</title>
-      <link>http://tinohean.top/p/%E9%9B%AA%E5%B1%B1/</link>
+      <title>【随笔】雪山</title>
+      <link>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/</link>
       <pubDate>Sun, 02 Apr 2017 18:16:30 +0800</pubDate>
       
-      <guid>http://tinohean.top/p/%E9%9B%AA%E5%B1%B1/</guid>
+      <guid>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/</guid>
       <description>雪山 上个月我在公司内部做了一次关于docker的技术分享，主题就是简单介绍下docker的技术原理及使用。在做PPT的时候，我发现这并不是一个那么容易的事情。
 难点其一是技术原理的理解。与研发不同的是，运维平时并不注重深入了解技术实现这一块。对于工具型的技术方案，一般仅限于了解其大概的模块框架，并不具备对外者讲解清楚技术封装的基本能力。这样的学习模式好处是上手快，翻翻文档很容易就部署一套完整的体系。坏处也显而易见，遇到系统性的问题很难有思路去排查，对于配置也是照本宣科，依靠百度和谷歌解决大部分问题。而对于传统运维来讲，系统底层技术面的匮乏，加上代码阅读能力较低，能够深入了解一个技术框架的实现并不是一件很轻松的事情。
 难点其二是分享本身。分享之所以成为分享，其核心的逻辑是先自我消化，然后再通过讲解的方式阐述消化的内容。这一吞吐的过程势必暴露分享者的技术储备。同时，讲解者必须具备一定的逻辑和分析能力 ，将脑中形成的技术面归纳通过文图的形式条理化，具象化。将复杂的事情简单讲解出来是一个需要持久化练习的能力。人类本身讨厌一切复杂的事情。我更喜欢类比这个学习方法。类比的过程可以将抽象的层面具象化，更容易理解和记忆。然而技术上的理解，很难有类比的对象。我只能尝试用概括的方式把消化掉的一堆堆的文档和技术文章精炼为几个简单的图表。
