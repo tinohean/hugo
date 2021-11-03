@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='Kubeadm部署kubernetes高可用集群 前言 技术发展实在是快，之前还比较流行的keep-alived&#43;HAProxy HA负载方案，如今(2021-11-2)已经大有被kube-vip取代的趋势。回过头来看当时写的部署文档，已然过时了。 趁着服务器空闲，修补下方案。
+HA方案 对于kubernetes集群来说，高可用性指的是控制平面（包括etcd集群)的高可用。控制平面的组件中，kube-scheduler和kube-controller-manager通过etcd实现高可用选主，我们不需要额外操心。所以，实际的高可用方案，只要满足控制节点数量奇数且大于等于三，然后实现apiserver的高可用即可。
+基于etcd集群的耦合性，高可用集群一般包括以下两种拓扑架构。
+Stacked ectd topology etcd分布式存储集群堆叠在每一个控制面板节点上，作为控制平面的一个组件运行。
+每个控制平面节点创建一个本地etcd成员，这个etcd成员只与本地的kube-apiserver通信。
+ stacked etcd topology 
+External etcd topology 外部etcd分布式数据存储集群在独立于控制平面节点的其他节点上运行。这样的话解耦了控制平面和etcd成员。 缺点是需要更多的服务器节点（至少三个）用于etcd集群部署。
+ external etcd topology 
+apiserver高可用实现 实现apiserver的高可用，主要是通过负载均衡技术，把请求转发到健康的节点上。
+ apiserver 
+ 硬件LB
+比如F5,Radware这类硬件负载技术。不过成本较高，好处是一般都自带维保合同。适合财大气粗的大厂。 软件LB 比如nginx代理，keep-alived &#43; HAProxy，kube-vip  说到这里我其实觉得蛮遗憾的，为什么k8s不自己实现高可用呢，比如借助ipvs&amp;hellip;非要借助外部依赖增大架构复杂度。
+本文主要介绍最新的kube-vip实现的高可用方案。
+kube-vip 传统意义上的HA方案主要是通过keep-alived &#43; HAProxy实现的，HAProxy是一个软件负载，但是存在单点问题，而keep-alived通过VRRP协议实现vip漂移从而达到热备的效果。
+ keep-alived &#43; HAProxy 
+kube-vip是直接通过k8s构建的static pod，也可以配置为DaemonSet实现，通过ARP或者BGP协议实现冗余。
+ARP协议下会选举出一个领导者，而BGP协议下所有节点都会广播VIP地址。优点也是显而易见的，架构简单，成本低，维护方便。
+ 前期准备 节点规划    主机名 角色 ip 配置 系统版本     master-1 master 172.'><title>Kubeadm部署kubernetes高可用集群</title>
+
+<link rel='canonical' href='http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/'>
+
+<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='Kubeadm部署kubernetes高可用集群'>
+<meta property='og:description' content='Kubeadm部署kubernetes高可用集群 前言 技术发展实在是快，之前还比较流行的keep-alived&#43;HAProxy HA负载方案，如今(2021-11-2)已经大有被kube-vip取代的趋势。回过头来看当时写的部署文档，已然过时了。 趁着服务器空闲，修补下方案。
+HA方案 对于kubernetes集群来说，高可用性指的是控制平面（包括etcd集群)的高可用。控制平面的组件中，kube-scheduler和kube-controller-manager通过etcd实现高可用选主，我们不需要额外操心。所以，实际的高可用方案，只要满足控制节点数量奇数且大于等于三，然后实现apiserver的高可用即可。
+基于etcd集群的耦合性，高可用集群一般包括以下两种拓扑架构。
+Stacked ectd topology etcd分布式存储集群堆叠在每一个控制面板节点上，作为控制平面的一个组件运行。
+每个控制平面节点创建一个本地etcd成员，这个etcd成员只与本地的kube-apiserver通信。
+ stacked etcd topology 
+External etcd topology 外部etcd分布式数据存储集群在独立于控制平面节点的其他节点上运行。这样的话解耦了控制平面和etcd成员。 缺点是需要更多的服务器节点（至少三个）用于etcd集群部署。
+ external etcd topology 
+apiserver高可用实现 实现apiserver的高可用，主要是通过负载均衡技术，把请求转发到健康的节点上。
+ apiserver 
+ 硬件LB
+比如F5,Radware这类硬件负载技术。不过成本较高，好处是一般都自带维保合同。适合财大气粗的大厂。 软件LB 比如nginx代理，keep-alived &#43; HAProxy，kube-vip  说到这里我其实觉得蛮遗憾的，为什么k8s不自己实现高可用呢，比如借助ipvs&amp;hellip;非要借助外部依赖增大架构复杂度。
+本文主要介绍最新的kube-vip实现的高可用方案。
+kube-vip 传统意义上的HA方案主要是通过keep-alived &#43; HAProxy实现的，HAProxy是一个软件负载，但是存在单点问题，而keep-alived通过VRRP协议实现vip漂移从而达到热备的效果。
+ keep-alived &#43; HAProxy 
+kube-vip是直接通过k8s构建的static pod，也可以配置为DaemonSet实现，通过ARP或者BGP协议实现冗余。
+ARP协议下会选举出一个领导者，而BGP协议下所有节点都会广播VIP地址。优点也是显而易见的，架构简单，成本低，维护方便。
+ 前期准备 节点规划    主机名 角色 ip 配置 系统版本     master-1 master 172.'>
+<meta property='og:url' content='http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='kubernetes' /><meta property='article:tag' content='部署方案' /><meta property='article:published_time' content='2020-02-14T22:52:33&#43;08:00'/><meta property='article:modified_time' content='2020-02-14T22:52:33&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/kubernetes.png' />
+<meta name="twitter:title" content="Kubeadm部署kubernetes高可用集群">
+<meta name="twitter:description" content="Kubeadm部署kubernetes高可用集群 前言 技术发展实在是快，之前还比较流行的keep-alived&#43;HAProxy HA负载方案，如今(2021-11-2)已经大有被kube-vip取代的趋势。回过头来看当时写的部署文档，已然过时了。 趁着服务器空闲，修补下方案。
+HA方案 对于kubernetes集群来说，高可用性指的是控制平面（包括etcd集群)的高可用。控制平面的组件中，kube-scheduler和kube-controller-manager通过etcd实现高可用选主，我们不需要额外操心。所以，实际的高可用方案，只要满足控制节点数量奇数且大于等于三，然后实现apiserver的高可用即可。
+基于etcd集群的耦合性，高可用集群一般包括以下两种拓扑架构。
+Stacked ectd topology etcd分布式存储集群堆叠在每一个控制面板节点上，作为控制平面的一个组件运行。
+每个控制平面节点创建一个本地etcd成员，这个etcd成员只与本地的kube-apiserver通信。
+ stacked etcd topology 
+External etcd topology 外部etcd分布式数据存储集群在独立于控制平面节点的其他节点上运行。这样的话解耦了控制平面和etcd成员。 缺点是需要更多的服务器节点（至少三个）用于etcd集群部署。
+ external etcd topology 
+apiserver高可用实现 实现apiserver的高可用，主要是通过负载均衡技术，把请求转发到健康的节点上。
+ apiserver 
+ 硬件LB
+比如F5,Radware这类硬件负载技术。不过成本较高，好处是一般都自带维保合同。适合财大气粗的大厂。 软件LB 比如nginx代理，keep-alived &#43; HAProxy，kube-vip  说到这里我其实觉得蛮遗憾的，为什么k8s不自己实现高可用呢，比如借助ipvs&amp;hellip;非要借助外部依赖增大架构复杂度。
+本文主要介绍最新的kube-vip实现的高可用方案。
+kube-vip 传统意义上的HA方案主要是通过keep-alived &#43; HAProxy实现的，HAProxy是一个软件负载，但是存在单点问题，而keep-alived通过VRRP协议实现vip漂移从而达到热备的效果。
+ keep-alived &#43; HAProxy 
+kube-vip是直接通过k8s构建的static pod，也可以配置为DaemonSet实现，通过ARP或者BGP协议实现冗余。
+ARP协议下会选举出一个领导者，而BGP协议下所有节点都会广播VIP地址。优点也是显而易见的，架构简单，成本低，维护方便。
+ 前期准备 节点规划    主机名 角色 ip 配置 系统版本     master-1 master 172."><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/kubernetes.png' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KZ420DZ0LK"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-KZ420DZ0LK', { 'anonymize_ip': false });
+}
+</script>
+
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="http://tinohean.top" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>Back</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/">
+                <img src="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/kubernetes_hub6bed6b994a2e4811d8630d5db2ab610_722818_800x0_resize_box_3.png"
+                        srcset="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/kubernetes_hub6bed6b994a2e4811d8630d5db2ab610_722818_800x0_resize_box_3.png 800w, /p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/kubernetes_hub6bed6b994a2e4811d8630d5db2ab610_722818_1600x0_resize_box_3.png 1600w"
+                        width="800" 
+                        height="267" 
+                        loading="lazy"
+                        alt="Featured image of post Kubeadm部署kubernetes高可用集群" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/">Kubeadm部署kubernetes高可用集群</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Feb 14, 2020</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    5 min read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h1 id="kubeadm部署kubernetes高可用集群">Kubeadm部署kubernetes高可用集群</h1>
+<h2 id="前言">前言</h2>
+<p>技术发展实在是快，之前还比较流行的keep-alived+HAProxy HA负载方案，如今(2021-11-2)已经大有被kube-vip取代的趋势。回过头来看当时写的部署文档，已然过时了。
+趁着服务器空闲，修补下方案。</p>
+<h3 id="ha方案">HA方案</h3>
+<p>对于kubernetes集群来说，高可用性指的是控制平面（包括etcd集群)的高可用。控制平面的组件中，kube-scheduler和kube-controller-manager通过etcd实现高可用选主，我们不需要额外操心。所以，实际的高可用方案，只要满足控制节点数量奇数且大于等于三，然后实现apiserver的高可用即可。</p>
+<p>基于etcd集群的耦合性，高可用集群一般包括以下两种拓扑架构。</p>
+<h4 id="stacked-ectd-topology">Stacked ectd topology</h4>
+<p>etcd分布式存储集群堆叠在每一个控制面板节点上，作为控制平面的一个组件运行。<br>
+每个控制平面节点创建一个本地etcd成员，这个etcd成员只与本地的kube-apiserver通信。</p>
+<p><figure style="flex-grow: 166; flex-basis: 400px">
+		<a href="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/stacked_ha.jpg" data-size="783x469"><img src="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/stacked_ha.jpg"
+				srcset="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/stacked_ha_hu29c20fb19d2aaa59a3207076dda60f90_87081_480x0_resize_q75_box.jpg 480w, /p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/stacked_ha_hu29c20fb19d2aaa59a3207076dda60f90_87081_1024x0_resize_q75_box.jpg 1024w"
+				width="783"
+				height="469"
+				loading="lazy"
+				alt="stacked etcd topology">
+		</a>
+		
+		<figcaption>stacked etcd topology</figcaption>
+		
+	</figure></p>
+<h4 id="external-etcd-topology">External etcd topology</h4>
+<p>外部etcd分布式数据存储集群在独立于控制平面节点的其他节点上运行。这样的话解耦了控制平面和etcd成员。
+缺点是需要更多的服务器节点（至少三个）用于etcd集群部署。</p>
+<p><figure style="flex-grow: 168; flex-basis: 403px">
+		<a href="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/external_ha.png" data-size="846x503"><img src="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/external_ha.png"
+				srcset="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/external_ha_hu36d34903c3822935efc6c79acaee76f5_65718_480x0_resize_box_3.png 480w, /p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/external_ha_hu36d34903c3822935efc6c79acaee76f5_65718_1024x0_resize_box_3.png 1024w"
+				width="846"
+				height="503"
+				loading="lazy"
+				alt="external etcd topology">
+		</a>
+		
+		<figcaption>external etcd topology</figcaption>
+		
+	</figure></p>
+<h3 id="apiserver高可用实现">apiserver高可用实现</h3>
+<p>实现apiserver的高可用，主要是通过负载均衡技术，把请求转发到健康的节点上。</p>
+<p><figure style="flex-grow: 132; flex-basis: 317px">
+		<a href="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/apiserver.png" data-size="788x596"><img src="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/apiserver.png"
+				srcset="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/apiserver_hu9ea0991eca669784091287c7a482d956_60121_480x0_resize_box_3.png 480w, /p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/apiserver_hu9ea0991eca669784091287c7a482d956_60121_1024x0_resize_box_3.png 1024w"
+				width="788"
+				height="596"
+				loading="lazy"
+				alt="apiserver">
+		</a>
+		
+		<figcaption>apiserver</figcaption>
+		
+	</figure></p>
+<ul>
+<li>硬件LB<br>
+比如F5,Radware这类硬件负载技术。不过成本较高，好处是一般都自带维保合同。适合财大气粗的大厂。</li>
+<li>软件LB <br>
+比如nginx代理，keep-alived + HAProxy，kube-vip</li>
+</ul>
+<p>说到这里我其实觉得蛮遗憾的，为什么k8s不自己实现高可用呢，比如借助ipvs&hellip;非要借助外部依赖增大架构复杂度。</p>
+<p>本文主要介绍最新的kube-vip实现的高可用方案。</p>
+<h4 id="kube-vip">kube-vip</h4>
+<p>传统意义上的HA方案主要是通过keep-alived + HAProxy实现的，HAProxy是一个软件负载，但是存在单点问题，而keep-alived通过VRRP协议实现vip漂移从而达到热备的效果。<br>
+<figure style="flex-grow: 105; flex-basis: 252px">
+		<a href="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/keepalived.png" data-size="673x640"><img src="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/keepalived.png"
+				srcset="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/keepalived_huc8b217e76505ba7b35e1d20c0333249d_87219_480x0_resize_box_3.png 480w, /p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/keepalived_huc8b217e76505ba7b35e1d20c0333249d_87219_1024x0_resize_box_3.png 1024w"
+				width="673"
+				height="640"
+				loading="lazy"
+				alt="keep-alived &#43; HAProxy">
+		</a>
+		
+		<figcaption>keep-alived + HAProxy</figcaption>
+		
+	</figure></p>
+<p>kube-vip是直接通过k8s构建的static pod，也可以配置为DaemonSet实现，通过ARP或者BGP协议实现冗余。</p>
+<p>ARP协议下会选举出一个领导者，而BGP协议下所有节点都会广播VIP地址。优点也是显而易见的，架构简单，成本低，维护方便。</p>
+<hr>
+<h2 id="前期准备">前期准备</h2>
+<h3 id="节点规划">节点规划</h3>
+<table>
+<thead>
+<tr>
+<th>主机名</th>
+<th>角色</th>
+<th>ip</th>
+<th>配置</th>
+<th>系统版本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>master-1</td>
+<td>master</td>
+<td>172.21.0.3</td>
+<td>4C8G</td>
+<td>Ubuntu 16.04.1 LTS</td>
+</tr>
+<tr>
+<td>master-2</td>
+<td>master</td>
+<td>172.21.0.4</td>
+<td>4C8G</td>
+<td>Ubuntu 16.04.1 LTS</td>
+</tr>
+<tr>
+<td>master-3</td>
+<td>master</td>
+<td>172.21.0.5</td>
+<td>4C8G</td>
+<td>Ubuntu 16.04.1 LTS</td>
+</tr>
+<tr>
+<td>worker-1</td>
+<td>node</td>
+<td>172.21.0.6</td>
+<td>4C8G</td>
+<td>Ubuntu 16.04.1 LTS</td>
+</tr>
+<tr>
+<td>worker-2</td>
+<td>node</td>
+<td>172.21.0.7</td>
+<td>4C8G</td>
+<td>Ubuntu 16.04.1 LTS</td>
+</tr>
+<tr>
+<td>k8s-apiserver</td>
+<td>LB</td>
+<td>172.17.0.11</td>
+<td>kube-vip</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="硬件需求">硬件需求</h3>
+<ul>
+<li>系统版本支持</li>
+<li>2GB及以上的内存，2C及以上的CPU核心</li>
+<li>节点直接网络互通</li>
+<li>主机名、UUID、MAC地址等唯一不重复</li>
+</ul>
+<h3 id="环境配置">环境配置</h3>
+<p>除了一些基本的环境配置，比如主机名，本地DNS配置，时间同步等以外，所有服务器都需要进行基础设置，比如关闭防火墙，关闭swap等。</p>
+<h4 id="关闭防火墙">关闭防火墙</h4>
+<p>鉴于防火墙的配置复杂，k8s需要保持一些端口畅通，一般会建议关闭防火墙。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">ufw disable
+</code></pre></div><p>如果有生产环境安全需求不关闭防火墙的话，需要保持端口畅通，详情请参考
+<a class="link" href="https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#check-required-ports"  target="_blank" rel="noopener"
+    >https://kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#check-required-ports</a></p>
+<h4 id="关闭swap">关闭swap</h4>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">swapoff -a <span class="o">&amp;&amp;</span> sysctl -w vm.swappiness<span class="o">=</span><span class="m">0</span>
+sed -ri <span class="s1">&#39;/^[^#]*swap/s@^@#@&#39;</span> /etc/fstab
+</code></pre></div><h4 id="允许iptables检查桥接流量">允许iptables检查桥接流量</h4>
+<p>此处用于提供一些桥接技术的CNI网络插件支持iptables代理。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 加载br_netfilter模块</span>
+sudo modprobe br_netfilter
+<span class="c1"># 查看加载结果</span>
+lsmod <span class="p">|</span> grep br_netfilter
+<span class="c1"># 允许iptables监控桥接流量</span>
+cat <span class="s">&lt;&lt;EOF | sudo tee /etc/modules-load.d/k8s.conf
+</span><span class="s">br_netfilter
+</span><span class="s">EOF</span>
+
+cat <span class="s">&lt;&lt;EOF | sudo tee /etc/sysctl.d/k8s.conf
+</span><span class="s">net.bridge.bridge-nf-call-ip6tables = 1
+</span><span class="s">net.bridge.bridge-nf-call-iptables = 1
+</span><span class="s">EOF</span>
+sudo sysctl --system
+</code></pre></div><h4 id="安装容器运行时">安装容器运行时</h4>
+<p>鉴于kubernets即将放弃支持<a class="link" href="https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.20.md#deprecation"  target="_blank" rel="noopener"
+    >docker-shim</a>,现在首推的容器运行时为contained</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">cat <span class="s">&lt;&lt;EOF | sudo tee /etc/modules-load.d/containerd.conf
+</span><span class="s">overlay
+</span><span class="s">br_netfilter
+</span><span class="s">EOF</span>
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+<span class="c1"># Setup required sysctl params, these persist across reboots.</span>
+cat <span class="s">&lt;&lt;EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
+</span><span class="s">net.bridge.bridge-nf-call-iptables  = 1
+</span><span class="s">net.ipv4.ip_forward                 = 1
+</span><span class="s">net.bridge.bridge-nf-call-ip6tables = 1
+</span><span class="s">EOF</span>
+
+<span class="c1"># Apply sysctl params without reboot</span>
+sudo sysctl --system
+
+sudo apt-get update <span class="o">&amp;&amp;</span> sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg <span class="p">|</span> sudo apt-key --keyring /etc/apt/trusted.gpg.d/docker.gpg add -
+sudo add-apt-repository <span class="se">\
+</span><span class="se"></span>    <span class="s2">&#34;deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+</span><span class="s2">    </span><span class="k">$(</span>lsb_release -cs<span class="k">)</span><span class="s2"> \
+</span><span class="s2">    stable&#34;</span>
+sudo apt-get update <span class="o">&amp;&amp;</span> sudo apt-get install -y containerd.io
+
+<span class="c1"># Configure containerd</span>
+sudo mkdir -p /etc/containerd
+sudo containerd config default <span class="p">|</span> sudo tee /etc/containerd/config.toml
+<span class="c1"># 使用 systemd 作为 cgroup 驱动</span>
+sudo vim /etc/containerd/config.toml
+  <span class="o">[</span>plugins.<span class="s2">&#34;io.containerd.runtime.v1.linux&#34;</span><span class="o">]</span>
+     <span class="nv">systemd_cgroup</span> <span class="o">=</span> <span class="nb">true</span>
+<span class="c1"># 修改配置镜像源为阿里云</span>
+        <span class="o">[</span>plugins.<span class="s2">&#34;io.containerd.grpc.v1.cri&#34;</span>.registry.mirrors.<span class="s2">&#34;docker.io&#34;</span><span class="o">]</span>
+          <span class="nv">endpoint</span> <span class="o">=</span> <span class="o">[</span><span class="s2">&#34;https://vcw3fe1o.mirror.aliyuncs.com&#34;</span><span class="o">]</span>
+   <span class="o">[</span>plugins.<span class="s2">&#34;io.containerd.grpc.v1.cri&#34;</span><span class="o">]</span>
+      <span class="nv">sandbox_image</span> <span class="o">=</span> <span class="s2">&#34;https://vcw3fe1o.mirror.aliyuncs.com/pause:3.2&#34;</span>
+<span class="c1"># Restart containerd</span>
+sudo systemctl restart containerd
+</code></pre></div><hr>
+<p>可选方案:安装docker</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo apt-get update
+sudo apt-get install <span class="se">\
+</span><span class="se"></span>    apt-transport-https <span class="se">\
+</span><span class="se"></span>    ca-certificates <span class="se">\
+</span><span class="se"></span>    curl <span class="se">\
+</span><span class="se"></span>    gnupg-agent <span class="se">\
+</span><span class="se"></span>    software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg <span class="p">|</span> sudo apt-key add -
+sudo add-apt-repository <span class="se">\
+</span><span class="se"></span>   <span class="s2">&#34;deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+</span><span class="s2">   </span><span class="k">$(</span>lsb_release -cs<span class="k">)</span><span class="s2"> \
+</span><span class="s2">   stable&#34;</span>
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+</code></pre></div><p>配置docker镜像加速,systemd管理</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">cat &gt; /etc/docker/daemon.json <span class="s">&lt;&lt;EOF
+</span><span class="s">{
+</span><span class="s">  &#34;exec-opts&#34;: [&#34;native.cgroupdriver=systemd&#34;],
+</span><span class="s">  &#34;registry-mirrors&#34;: [
+</span><span class="s">      &#34;https://fz5yth0r.mirror.aliyuncs.com&#34;,
+</span><span class="s">      &#34;http://hub-mirror.c.163.com/&#34;,
+</span><span class="s">      &#34;https://docker.mirrors.ustc.edu.cn/&#34;,
+</span><span class="s">      &#34;https://registry.docker-cn.com&#34;
+</span><span class="s">  ],
+</span><span class="s">  &#34;storage-driver&#34;: &#34;overlay2&#34;,
+</span><span class="s">  &#34;storage-opts&#34;: [
+</span><span class="s">    &#34;overlay2.override_kernel_check=true&#34;
+</span><span class="s">  ],
+</span><span class="s">  &#34;log-driver&#34;: &#34;json-file&#34;,
+</span><span class="s">  &#34;log-opts&#34;: {
+</span><span class="s">    &#34;max-size&#34;: &#34;100m&#34;,
+</span><span class="s">    &#34;max-file&#34;: &#34;3&#34;
+</span><span class="s">  }
+</span><span class="s">}
+</span><span class="s">EOF</span>
+
+sudo systemctl restart docker.service 
+</code></pre></div><h4 id="开启内核ipvs模块-可选">开启内核ipvs模块 (可选)</h4>
+<p>kube-proxy使用ipvs会有更好的性能，可伸缩性等优点<br>
+<a class="link" href="https://github.com/kubernetes/kubernetes/blob/master/pkg/proxy/ipvs/README.md"  target="_blank" rel="noopener"
+    >https://github.com/kubernetes/kubernetes/blob/master/pkg/proxy/ipvs/README.md</a><br>
+确保内核模块开启</p>
+<ul>
+<li>ip_vs</li>
+<li>ip_vs_rr</li>
+<li>ip_vs_wrr</li>
+<li>ip_vs_sh</li>
+<li>nf_conntrack_ipv4</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 安装ipvsadm ipset</span>
+sudo apt-get install ipvsadm ipset
+<span class="c1"># load module &lt;module_name&gt;</span>
+sudo modprobe -- ip_vs
+sudo modprobe -- ip_vs_rr
+sudo modprobe -- ip_vs_wrr
+sudo modprobe -- ip_vs_sh
+sudo modprobe -- nf_conntrack
+
+<span class="c1"># to check loaded modules, use</span>
+lsmod <span class="p">|</span> grep -e ip_vs -e nf_conntrack
+
+<span class="c1"># 永久生效</span>
+cat <span class="s">&lt;&lt; EOF | sudo tee /etc/modules-load.d/ipvs.conf
+</span><span class="s">ip_vs
+</span><span class="s">ip_vs_rr
+</span><span class="s">ip_vs_wrr
+</span><span class="s">ip_vs_sh
+</span><span class="s">nf_conntrack 
+</span><span class="s">EOF</span>
+<span class="c1"># Apply sysctl params without reboot</span>
+sudo sysctl --system
+</code></pre></div><h4 id="安装kubeadm相关程序">安装kubeadm相关程序</h4>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 国内使用阿里云镜像源进行安装</span>
+sudo apt-get update <span class="o">&amp;&amp;</span> sudo apt-get install -y apt-transport-https
+curl https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg <span class="p">|</span> sudo apt-key add - 
+cat <span class="s">&lt;&lt;EOF  | sudo tee /etc/apt/sources.list.d/kubernetes.list
+</span><span class="s">deb https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-$(lsb_release -cs) main
+</span><span class="s">EOF</span>
+sudo apt-get update
+<span class="c1"># 非master节点不需安装kubectl</span>
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+---
+
+<span class="c1"># 国外安装</span>
+sudo apt-get update <span class="o">&amp;&amp;</span> sudo apt-get install -y apt-transport-https curl
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg <span class="p">|</span> sudo apt-key add -
+cat <span class="s">&lt;&lt;EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+</span><span class="s">deb https://apt.kubernetes.io/ kubernetes-$(lsb_release -cs) main
+</span><span class="s">EOF</span>
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+
+<span class="c1"># 可选bash补全</span>
+sudo apt-get install bash-completion
+<span class="c1">#  生成自动补全脚本</span>
+sudo -s 
+<span class="nb">cd</span> /etc/bash_completion.d <span class="o">&amp;&amp;</span> kubectl completion bash &gt;kubectl
+</code></pre></div><p>目前kubernetes新版下，kubectl默认systemd托管，不需要额外配置了。</p>
+<h2 id="kubeadm部署">kubeadm部署</h2>
+<h3 id="kube-vip初始化">kube-vip初始化</h3>
+<p>由于BGP模式更为复杂，需要BGP服务支持，本部署方案选择更为简单的ARP模式。</p>
+<h4 id="生成kube-vip默认配置文件">生成kube-vip默认配置文件</h4>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># master-1</span>
+sudo mkdir -p /etc/kube-vip/
+sudo docker run -it --rm ghcr.io/kube-vip/kube-vip:0.3.7 sample config <span class="p">|</span> sudo tee /etc/kube-vip/config.yaml
+</code></pre></div><p>生成的配置文件config.yaml修改后如下</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">localPeer</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="c"># master-1主机名</span><span class="w">
+</span><span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l">master-1</span><span class="w">
+</span><span class="w">  </span><span class="c"># master-1ip地址</span><span class="w">
+</span><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.3</span><span class="w">
+</span><span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">10000</span><span class="w">
+</span><span class="w"></span><span class="nt">remotePeers</span><span class="p">:</span><span class="w">
+</span><span class="w"></span><span class="c"># 其他master节点的主机名和ip地址</span><span class="w">
+</span><span class="w"></span>- <span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l">master-2</span><span class="w">
+</span><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.4</span><span class="w">
+</span><span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">10000</span><span class="w">
+</span><span class="w"></span>- <span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l">master-3</span><span class="w">
+</span><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.5</span><span class="w">
+</span><span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">10000</span><span class="w">
+</span><span class="w"></span><span class="c"># apiserver的vip地址</span><span class="w">
+</span><span class="w"></span><span class="nt">vip</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.11</span><span class="w">
+</span><span class="w"></span><span class="nt">gratuitousARP</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w"></span><span class="nt">singleNode</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w"></span><span class="c"># master-1配置为leader,其他节点为false</span><span class="w">
+</span><span class="w"></span><span class="nt">startAsLeader</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w"></span><span class="c"># 网卡</span><span class="w">
+</span><span class="w"></span><span class="nt">interface</span><span class="p">:</span><span class="w"> </span><span class="l">eth0</span><span class="w">
+</span><span class="w"></span><span class="nt">loadBalancers</span><span class="p">:</span><span class="w">
+</span><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">API Server Load Balancer</span><span class="w">
+</span><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">tcp</span><span class="w">
+</span><span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">8443</span><span class="w">
+</span><span class="w">  </span><span class="nt">bindToVip</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">  </span><span class="nt">backends</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="c"># 所有master节点信息</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">6443</span><span class="w">
+</span><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.3</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">6443</span><span class="w">
+</span><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.4</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">6443</span><span class="w">
+</span><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.5</span><span class="w">
+</span></code></pre></div><h4 id="生成static-pod配置">生成static pod配置</h4>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># master-1</span>
+sudo mkdir -p /etc/kubernetes/manifests/
+sudo docker run -it --rm ghcr.io/kube-vip/kube-vip:0.3.7 sample manifest <span class="p">|</span> sudo tee /etc/kubernetes/manifests/kube-vip.yaml
+</code></pre></div><p>github的package可能下载失败，请参考https://github.com/kube-vip/kube-vip/pkgs/container/kube-vip/4621490?tag=v0.3.7</p>
+<p>生成的默认配置文件kube-vip.yaml如下</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Pod</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">creationTimestamp</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">kube-vip</span><span class="w">
+</span><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">kube-system</span><span class="w">
+</span><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">containers</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">args</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span>- <span class="l">start</span><span class="w">
+</span><span class="w">    </span>- -<span class="l">c</span><span class="w">
+</span><span class="w">    </span>- <span class="l">/etc/kube-vip/config.yaml</span><span class="w">
+</span><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">docker.io/plndr/kube-vip:v0.3.7</span><span class="w">
+</span><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">kube-vip</span><span class="w">
+</span><span class="w">    </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span><span class="w">    </span><span class="nt">securityContext</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">capabilities</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">add</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span>- <span class="l">NET_ADMIN</span><span class="w">
+</span><span class="w">        </span>- <span class="l">SYS_TIME</span><span class="w">
+</span><span class="w">    </span><span class="nt">volumeMounts</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span>- <span class="nt">mountPath</span><span class="p">:</span><span class="w"> </span><span class="l">/etc/kube-vip/</span><span class="w">
+</span><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">config</span><span class="w">
+</span><span class="w">  </span><span class="nt">hostNetwork</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">  </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">hostPath</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">/etc/kube-vip/</span><span class="w">
+</span><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">config</span><span class="w">
+</span><span class="w"></span><span class="nt">status</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span></code></pre></div><h3 id="kubeadm初始化">kubeadm初始化</h3>
+<p>master-1 配置阿里云镜像，apiserver的负载VIP，pod子网掩码(网络插件需要)等</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 配置文件</span>
+sudo kubeadm config print init-defaults &gt; initconfig.yaml
+<span class="c1"># 修改配置文件后，执行检查 （详细修改请见下面的initconfig.yaml)</span>
+sudo kubeadm init --config initconfig.yaml --dry-run
+sudo kubeadm config images list --config initconfig.yaml
+<span class="c1"># 预先拉取镜像</span>
+sudo kubeadm config images pull --config initconfig.yaml
+sudo kubeadm init --config initconfig.yaml --upload-certs --v<span class="o">=</span><span class="m">5</span>
+
+<span class="c1"># 非配置文件，不支持ipvs直接配置，需要后面patch</span>
+
+sudo kubeadm init <span class="se">\
+</span><span class="se"></span><span class="c1"># 国内阿里云镜像源</span>
+--image-repository registry.aliyuncs.com/google_containers <span class="se">\
+</span><span class="se"></span><span class="c1"># apiserver的VIP</span>
+--control-plane-endpoint 172.17.0.11 <span class="se">\
+</span><span class="se"></span><span class="c1"># 本地ip</span>
+--apiserver-advertise-address 172.21.0.3 <span class="se">\
+</span><span class="se"></span><span class="c1"># 根据网络CNI插件选择配置</span>
+--pod-network-cidr 10.244.0.0/16 <span class="se">\
+</span><span class="se"></span><span class="c1"># 容器运行时的CRI套接字</span>
+--cri-socket /run/containerd/containerd.sock
+</code></pre></div><p>配置文件initconfig.yaml，改动点请看注释</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">kubeadm.k8s.io/v1beta3</span><span class="w">
+</span><span class="w"></span><span class="nt">bootstrapTokens</span><span class="p">:</span><span class="w">
+</span><span class="w"></span>- <span class="nt">groups</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="l">system:bootstrappers:kubeadm:default-node-token</span><span class="w">
+</span><span class="w">  </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="l">abcdef.0123456789abcdef</span><span class="w">
+</span><span class="w">  </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l">24h0m0s</span><span class="w">
+</span><span class="w">  </span><span class="nt">usages</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="l">signing</span><span class="w">
+</span><span class="w">  </span>- <span class="l">authentication</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">InitConfiguration</span><span class="w">
+</span><span class="w"></span><span class="nt">localAPIEndpoint</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="c">#### 指明用Master的哪个interface与Cluster 的其他节点通信。 如果Master有多个网卡， 建议明确指定，如果不指定，kubeadm会自动选择有默认网关的interface</span><span class="w">
+</span><span class="w">  </span><span class="nt">advertiseAddress</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.10</span><span class="w">
+</span><span class="w">  </span><span class="nt">bindPort</span><span class="p">:</span><span class="w"> </span><span class="m">6443</span><span class="w">
+</span><span class="w"></span><span class="nt">nodeRegistration</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="c">#### 容器运行时,可选docker</span><span class="w">
+</span><span class="w">  </span><span class="nt">criSocket</span><span class="p">:</span><span class="w"> </span><span class="l">/run/containerd/containerd.sock</span><span class="w">
+</span><span class="w">  </span><span class="c">#criSocket: /var/run/dockershim.sock</span><span class="w">
+</span><span class="w">  </span><span class="nt">imagePullPolicy</span><span class="p">:</span><span class="w"> </span><span class="l">IfNotPresent</span><span class="w">
+</span><span class="w">  </span><span class="c">#### 本地主机名</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">master-1</span><span class="w">
+</span><span class="w">  </span><span class="nt">taints</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="w">
+</span><span class="w"></span><span class="nn">---</span><span class="w">
+</span><span class="w"></span><span class="nt">apiServer</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">timeoutForControlPlane</span><span class="p">:</span><span class="w"> </span><span class="l">4m0s</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">kubeadm.k8s.io/v1beta3</span><span class="w">
+</span><span class="w"></span><span class="nt">certificatesDir</span><span class="p">:</span><span class="w"> </span><span class="l">/etc/kubernetes/pki</span><span class="w">
+</span><span class="w"></span><span class="nt">clusterName</span><span class="p">:</span><span class="w"> </span><span class="l">kubernetes</span><span class="w">
+</span><span class="w"></span><span class="nt">controllerManager</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span><span class="w"></span><span class="c">#### 配置apiserver的VIP</span><span class="w">
+</span><span class="w"></span><span class="nt">controlPlaneEndpoint</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.11</span><span class="p">:</span><span class="m">8443</span><span class="w">
+</span><span class="w"></span><span class="nt">dns</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span><span class="w"></span><span class="nt">etcd</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">local</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">dataDir</span><span class="p">:</span><span class="w"> </span><span class="l">/var/lib/etcd</span><span class="w">
+</span><span class="w"></span><span class="c">#### 更新为国内阿里云镜像源</span><span class="w">
+</span><span class="w"></span><span class="nt">imageRepository</span><span class="p">:</span><span class="w"> </span><span class="l">registry.aliyuncs.com/google_containers</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ClusterConfiguration</span><span class="w">
+</span><span class="w"></span><span class="nt">kubernetesVersion</span><span class="p">:</span><span class="w"> </span><span class="m">1.22.0</span><span class="w">
+</span><span class="w"></span><span class="nt">networking</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">dnsDomain</span><span class="p">:</span><span class="w"> </span><span class="l">cluster.local</span><span class="w">
+</span><span class="w">  </span><span class="nt">serviceSubnet</span><span class="p">:</span><span class="w"> </span><span class="m">10.96.0.0</span><span class="l">/12</span><span class="w">
+</span><span class="w">  </span><span class="c">#### 根据网络插件按需配置，此处为flannel默认配置</span><span class="w">
+</span><span class="w">  </span><span class="nt">podSubnet</span><span class="p">:</span><span class="w"> </span><span class="m">10.244.0.0</span><span class="l">/16</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="nt">scheduler</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span><span class="w"></span><span class="nn">---</span><span class="w">
+</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">kubeproxy.config.k8s.io/v1alpha1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">KubeProxyConfiguration</span><span class="w"> </span><span class="c"># https://godoc.org/k8s.io/kube-proxy/config/v1alpha1#KubeProxyConfiguration</span><span class="w">
+</span><span class="w"></span><span class="c"># 按需配置ipvs</span><span class="w">
+</span><span class="w"></span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l">ipvs </span><span class="w">
+</span><span class="w">
+</span></code></pre></div><p>初始化后保存相关打印token,证书信息等。失败后重新init如果报错可以重置</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo kubeadm reset
+</code></pre></div><h3 id="配置k8s运行的普通用户">配置k8s运行的普通用户</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># master1</span>
+mkdir -p <span class="nv">$HOME</span>/.kube
+sudo cp -i /etc/kubernetes/admin.conf <span class="nv">$HOME</span>/.kube/config
+sudo chown <span class="k">$(</span>id -u<span class="k">)</span>:<span class="k">$(</span>id -g<span class="k">)</span> <span class="nv">$HOME</span>/.kube/config
+</code></pre></div><h3 id="安装网络插件">安装网络插件</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># flannel</span>
+<span class="c1"># master1</span>
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+<span class="c1"># 查看pods运行状况</span>
+kubectl get pods -n kube-system
+
+---
+
+<span class="c1"># calico</span>
+kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
+
+</code></pre></div><h3 id="其他master加入k8s集群">其他master加入k8s集群</h3>
+<h4 id="初始化kube-vip配置">初始化kube-vip配置</h4>
+<p>同master-1，创建/etc/kube-vip/config.yaml，以下是master-2示例</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">localPeer</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l">master-2</span><span class="w">
+</span><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.4</span><span class="w">
+</span><span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">10000</span><span class="w">
+</span><span class="w"></span><span class="nt">remotePeers</span><span class="p">:</span><span class="w">
+</span><span class="w"></span>- <span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l">master-1</span><span class="w">
+</span><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.3</span><span class="w">
+</span><span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">10000</span><span class="w">
+</span><span class="w"></span>- <span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l">master-3</span><span class="w">
+</span><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.5</span><span class="w">
+</span><span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">10000</span><span class="w">
+</span><span class="w"></span><span class="nt">vip</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.11</span><span class="w">
+</span><span class="w"></span><span class="nt">gratuitousARP</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w"></span><span class="nt">singleNode</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w"></span><span class="c">## 确保不是leader,false</span><span class="w">
+</span><span class="w"></span><span class="nt">startAsLeader</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w"></span><span class="nt">interface</span><span class="p">:</span><span class="w"> </span><span class="l">eth0</span><span class="w">
+</span><span class="w"></span><span class="nt">loadBalancers</span><span class="p">:</span><span class="w">
+</span><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">API Server Load Balancer</span><span class="w">
+</span><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">tcp</span><span class="w">
+</span><span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">8443</span><span class="w">
+</span><span class="w">  </span><span class="nt">bindToVip</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">  </span><span class="nt">backends</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">6443</span><span class="w">
+</span><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.10</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">6443</span><span class="w">
+</span><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.4</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">6443</span><span class="w">
+</span><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">172.17.0.17</span><span class="w">
+</span></code></pre></div><h4 id="加入集群的控制平面">加入集群的控制平面</h4>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># master2-3 </span>
+kubeadm join 172.17.0.10:8443 --token abcdef.0123456789abcdef <span class="se">\
+</span><span class="se"></span>    --discovery-token-ca-cert-hash sha256:53f09c157254a40b71043c71ad5094a335b0beb5ac083742d517ffc6792565bc <span class="se">\
+</span><span class="se"></span>    --control-plane --certificate-key e77731a34529ea1604a0f1344813c3ea4f83be7930471c917c5bb84a6776f421
+</code></pre></div><p>为了便于在任意master节点操作，同样进行用户初始化</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># master2-3</span>
+mkdir -p <span class="nv">$HOME</span>/.kube
+sudo cp -i /etc/kubernetes/admin.conf <span class="nv">$HOME</span>/.kube/config
+sudo chown <span class="k">$(</span>id -u<span class="k">)</span>:<span class="k">$(</span>id -g<span class="k">)</span> <span class="nv">$HOME</span>/.kube/config
+</code></pre></div><h4 id="生成static-pod配置-1">生成static pod配置</h4>
+<p>由于kubeadm init的一些古怪行为，比如不允许/etc/kubernetes/manifests下有文件存在，所以必须在join后进行该步骤。</p>
+<p>也可以直接复制master-1的配置文件（内容相同)。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo docker run -it --rm ghcr.io/kube-vip/kube-vip:0.3.7 sample manifest <span class="p">|</span> sudo tee /etc/kubernetes/manifests/kube-vip.yaml
+</code></pre></div><h3 id="其他node加入k8s集群">其他node加入k8s集群</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># worker-1-2</span>
+<span class="c1"># 使用 kubeadm init的初始化输出命令加入</span>
+kubeadm join 172.17.0.10:8443 --token abcdef.0123456789abcdef <span class="se">\
+</span><span class="se"></span>    --discovery-token-ca-cert-hash sha256:53f09c157254a40b71043c71ad5094a335b0beb5ac083742d517ffc6792565bc <span class="se">\
+</span></code></pre></div><h3 id="查看集群nodes状态">查看集群nodes状态</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># master</span>
+kubectl get nodes -o wide
+</code></pre></div><p>输出结果</p>
+<pre><code>NAME       STATUS   ROLES                  AGE     VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+master-1   Ready    control-plane,master   3m15s   v1.20.2   172.21.0.3    &lt;none&gt;        Ubuntu 16.04.1 LTS   4.4.0-157-generic   docker://19.3.14
+master-2   Ready    control-plane,master   2m37s   v1.20.2   172.21.0.4    &lt;none&gt;        Ubuntu 16.04.1 LTS   4.4.0-157-generic   docker://19.3.14
+master-3   Ready    control-plane,master   2m32s   v1.20.2   172.21.0.5    &lt;none&gt;        Ubuntu 16.04.1 LTS   4.4.0-157-generic   docker://19.3.14
+worker-1   Ready    &lt;none&gt;                 104s    v1.20.2   172.21.0.6    &lt;none&gt;        Ubuntu 16.04.1 LTS   4.4.0-157-generic   docker://19.3.14
+worker-2   Ready    &lt;none&gt;                 110s    v1.20.2   172.21.0.7    &lt;none&gt;        Ubuntu 16.04.1 LTS   4.4.0-157-generic   docker://19.3.14
+</code></pre><pre><code>                                                      -- 更新于2021年11月3日16:48分 --
+</code></pre>
+<h2 id="参考文档">参考文档</h2>
+<ol>
+<li><a class="link" href="https://github.com/kube-vip/kube-vip/blob/092eb5423a3d630a3aca20d5582fe4ad551a9bb9/kubernetes-control-plane.md"  target="_blank" rel="noopener"
+    >https://github.com/kube-vip/kube-vip/blob/092eb5423a3d630a3aca20d5582fe4ad551a9bb9/kubernetes-control-plane.md</a></li>
+<li><a class="link" href="https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/"  target="_blank" rel="noopener"
+    >https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/</a></li>
+<li><a class="link" href="https://www.cnblogs.com/hehe520/p/6147741.html"  target="_blank" rel="noopener"
+    >https://www.cnblogs.com/hehe520/p/6147741.html</a></li>
+<li><a class="link" href="http://www.skycloudsoftware.com/index.php/2016/08/18/kubernetes007.html"  target="_blank" rel="noopener"
+    >http://www.skycloudsoftware.com/index.php/2016/08/18/kubernetes007.html</a></li>
+<li><a class="link" href="https://inductor.medium.com/say-good-bye-to-haproxy-and-keepalived-with-kube-vip-on-your-ha-k8s-control-plane-bb7237eca9fc"  target="_blank" rel="noopener"
+    >https://inductor.medium.com/say-good-bye-to-haproxy-and-keepalived-with-kube-vip-on-your-ha-k8s-control-plane-bb7237eca9fc</a></li>
+<li><a class="link" href="https://zhangguanzhang.github.io/2019/11/24/kubeadm-base-use/"  target="_blank" rel="noopener"
+    >https://zhangguanzhang.github.io/2019/11/24/kubeadm-base-use/</a></li>
+<li><a class="link" href="https://github.com/kubernetes/kubeadm/blob/main/docs/ha-considerations.md#options-for-software-load-balancing"  target="_blank" rel="noopener"
+    >https://github.com/kubernetes/kubeadm/blob/main/docs/ha-considerations.md#options-for-software-load-balancing</a></li>
+</ol>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/kubernetes/">kubernetes</a>
+        
+            <a href="/tags/%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">部署方案</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">部署策略及容器化实现</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/paddle.f9980b85e5d47359ccd6cefec98ae32a_hu5438825b9b6d1014226d20d231e650c2_191045_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-&#43;ZgLheXUc1nM1s7&#43;yYrjKg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Paddle飞桨部署方案</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/">
+        
+        
+            <div class="article-image">
+                <img src="/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/cmd.3a98d9a5eb6c40084d7f8312c61175d1_hu6e16d3621c69d4baadb7f1b7e4fbf505_28691_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-OpjZpetsQAhNf4MSxhF10Q==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">CMD和ENTRYPOINT的配置比对详解</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/container.f6e588456d243f6b3691eae8fbb21613_hued08ec2480e5693b7d58c33103917ef1_43947_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-9uWIRW0kP2s2kero&#43;7IWEw==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">应用容器化改造的设计原则及模式</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/lake.b7b25110b382cae3afb4e59ab416fe18_hu4a54f6cc00d4e0599bb1fb51fbd2eda0_63589_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-t7JRELOCyuOvtOWatBb&#43;GA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">数据湖及其相关概念性调研</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+     
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2021 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">Table of contents</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#前言">前言</a>
+      <ol>
+        <li><a href="#ha方案">HA方案</a>
+          <ol>
+            <li><a href="#stacked-ectd-topology">Stacked ectd topology</a></li>
+            <li><a href="#external-etcd-topology">External etcd topology</a></li>
+          </ol>
+        </li>
+        <li><a href="#apiserver高可用实现">apiserver高可用实现</a>
+          <ol>
+            <li><a href="#kube-vip">kube-vip</a></li>
+          </ol>
+        </li>
+      </ol>
+    </li>
+    <li><a href="#前期准备">前期准备</a>
+      <ol>
+        <li><a href="#节点规划">节点规划</a></li>
+        <li><a href="#硬件需求">硬件需求</a></li>
+        <li><a href="#环境配置">环境配置</a>
+          <ol>
+            <li><a href="#关闭防火墙">关闭防火墙</a></li>
+            <li><a href="#关闭swap">关闭swap</a></li>
+            <li><a href="#允许iptables检查桥接流量">允许iptables检查桥接流量</a></li>
+            <li><a href="#安装容器运行时">安装容器运行时</a></li>
+            <li><a href="#开启内核ipvs模块-可选">开启内核ipvs模块 (可选)</a></li>
+            <li><a href="#安装kubeadm相关程序">安装kubeadm相关程序</a></li>
+          </ol>
+        </li>
+      </ol>
+    </li>
+    <li><a href="#kubeadm部署">kubeadm部署</a>
+      <ol>
+        <li><a href="#kube-vip初始化">kube-vip初始化</a>
+          <ol>
+            <li><a href="#生成kube-vip默认配置文件">生成kube-vip默认配置文件</a></li>
+            <li><a href="#生成static-pod配置">生成static pod配置</a></li>
+          </ol>
+        </li>
+        <li><a href="#kubeadm初始化">kubeadm初始化</a></li>
+        <li><a href="#配置k8s运行的普通用户">配置k8s运行的普通用户</a></li>
+        <li><a href="#安装网络插件">安装网络插件</a></li>
+        <li><a href="#其他master加入k8s集群">其他master加入k8s集群</a>
+          <ol>
+            <li><a href="#初始化kube-vip配置">初始化kube-vip配置</a></li>
+            <li><a href="#加入集群的控制平面">加入集群的控制平面</a></li>
+            <li><a href="#生成static-pod配置-1">生成static pod配置</a></li>
+          </ol>
+        </li>
+        <li><a href="#其他node加入k8s集群">其他node加入k8s集群</a></li>
+        <li><a href="#查看集群nodes状态">查看集群nodes状态</a></li>
+      </ol>
+    </li>
+    <li><a href="#参考文档">参考文档</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

@@ -21,12 +21,29 @@ echo &amp;#39;&amp;#39;&amp;#39;blacklist nouveau options nouveau modeset=0&amp;
     </item>
     
     <item>
-      <title>Kubeadm部署kubernetes集群</title>
-      <link>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/</link>
+      <title>Kubeadm部署kubernetes高可用集群</title>
+      <link>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/</link>
       <pubDate>Fri, 14 Feb 2020 22:52:33 +0800</pubDate>
       
-      <guid>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%9B%86%E7%BE%A4/</guid>
-      <description>Kubeadm部署kubernetes集群 前期准备 节点规划    主机名 角色 ip 配置 系统版本     k8s-master-01 master 172.21.0.3 4C8G Ubuntu 16.04.1 LTS   k8s-master-02 master 172.21.0.4 4C8G Ubuntu 16.04.1 LTS   k8s-master-03 master 172.21.0.5 4C8G Ubuntu 16.04.1 LTS   k8s-node-01 node 172.21.0.6 4C8G Ubuntu 16.04.1 LTS   k8s-node-02 node 172.21.0.7 4C8G Ubuntu 16.04.1 LTS   k8s-apiserver LB apiserver.k8s.local nginx实现的localproxy     环境配置 所有服务器都需要进行基本环境配置，比如关闭防火墙，关闭swap等</description>
+      <guid>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/</guid>
+      <description>Kubeadm部署kubernetes高可用集群 前言 技术发展实在是快，之前还比较流行的keep-alived+HAProxy HA负载方案，如今(2021-11-2)已经大有被kube-vip取代的趋势。回过头来看当时写的部署文档，已然过时了。 趁着服务器空闲，修补下方案。
+HA方案 对于kubernetes集群来说，高可用性指的是控制平面（包括etcd集群)的高可用。控制平面的组件中，kube-scheduler和kube-controller-manager通过etcd实现高可用选主，我们不需要额外操心。所以，实际的高可用方案，只要满足控制节点数量奇数且大于等于三，然后实现apiserver的高可用即可。
+基于etcd集群的耦合性，高可用集群一般包括以下两种拓扑架构。
+Stacked ectd topology etcd分布式存储集群堆叠在每一个控制面板节点上，作为控制平面的一个组件运行。
+每个控制平面节点创建一个本地etcd成员，这个etcd成员只与本地的kube-apiserver通信。
+ stacked etcd topology 
+External etcd topology 外部etcd分布式数据存储集群在独立于控制平面节点的其他节点上运行。这样的话解耦了控制平面和etcd成员。 缺点是需要更多的服务器节点（至少三个）用于etcd集群部署。
+ external etcd topology 
+apiserver高可用实现 实现apiserver的高可用，主要是通过负载均衡技术，把请求转发到健康的节点上。
+ apiserver 
+ 硬件LB
+比如F5,Radware这类硬件负载技术。不过成本较高，好处是一般都自带维保合同。适合财大气粗的大厂。 软件LB 比如nginx代理，keep-alived + HAProxy，kube-vip  说到这里我其实觉得蛮遗憾的，为什么k8s不自己实现高可用呢，比如借助ipvs&amp;hellip;非要借助外部依赖增大架构复杂度。
+本文主要介绍最新的kube-vip实现的高可用方案。
+kube-vip 传统意义上的HA方案主要是通过keep-alived + HAProxy实现的，HAProxy是一个软件负载，但是存在单点问题，而keep-alived通过VRRP协议实现vip漂移从而达到热备的效果。
+ keep-alived + HAProxy 
+kube-vip是直接通过k8s构建的static pod，也可以配置为DaemonSet实现，通过ARP或者BGP协议实现冗余。
+ARP协议下会选举出一个领导者，而BGP协议下所有节点都会广播VIP地址。优点也是显而易见的，架构简单，成本低，维护方便。
+ 前期准备 节点规划    主机名 角色 ip 配置 系统版本     master-1 master 172.</description>
     </item>
     
   </channel>
