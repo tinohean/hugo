@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>python on 半岛无风</title>
+    <link>http://tinohean.top/tags/python/</link>
+    <description>Recent content in python on 半岛无风</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 04 Sep 2021 16:11:53 +0800</lastBuildDate><atom:link href="http://tinohean.top/tags/python/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>ubuntu升级python版本正确姿势</title>
+      <link>http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/</link>
+      <pubDate>Sat, 04 Sep 2021 16:11:53 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/</guid>
+      <description>ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本引来了很多问题，可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
+其中python默认指向了python2.7,python3默认指向了3.5
+$ ls /usr/bin/ |grep python dh_pypy -&amp;gt; ../share/dh-python/dh_pypy* dh_python2* dh_python3 -&amp;gt; ../share/dh-python/dh_python3* pdb2.7 -&amp;gt; ../lib/python2.7/pdb.py* pdb3.5 -&amp;gt; ../lib/python3.5/pdb.py* py3versions -&amp;gt; ../share/python3/py3versions.py* pybuild -&amp;gt; ../share/dh-python/pybuild* python -&amp;gt; python2.7* python2 -&amp;gt; python2.7* python2.7* python2-jsondiff* python2-jsonpatch* python2-jsonpointer* python3 -&amp;gt; python3.5* python3.5* python3.5m* python3m -&amp;gt; python3.5m* pyversions -&amp;gt; ../share/python/pyversions.py* 在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。
+千万不要看国内各种转载复制粘贴的方案，以下是正确的版本升级姿势。
+升级新版本 安装python3.9 通过deadsnakes这个ppa源进行升级
+sudo add-apt-repository ppa:deadsnakes/ppa sudo apt update sudo apt install -y python3.9 然后通过update-alternatives切换python3的默认版本
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.</description>
+    </item>
+    
+  </channel>
+</rss>

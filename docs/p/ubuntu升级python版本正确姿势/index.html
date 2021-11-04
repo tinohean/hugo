@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本引来了很多问题，可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
+其中python默认指向了python2.7,python3默认指向了3.5
+$ ls /usr/bin/ |grep python dh_pypy -&amp;gt; ../share/dh-python/dh_pypy* dh_python2* dh_python3 -&amp;gt; ../share/dh-python/dh_python3* pdb2.7 -&amp;gt; ../lib/python2.7/pdb.py* pdb3.5 -&amp;gt; ../lib/python3.5/pdb.py* py3versions -&amp;gt; ../share/python3/py3versions.py* pybuild -&amp;gt; ../share/dh-python/pybuild* python -&amp;gt; python2.7* python2 -&amp;gt; python2.7* python2.7* python2-jsondiff* python2-jsonpatch* python2-jsonpointer* python3 -&amp;gt; python3.5* python3.5* python3.5m* python3m -&amp;gt; python3.5m* pyversions -&amp;gt; ../share/python/pyversions.py* 在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。
+千万不要看国内各种转载复制粘贴的方案，以下是正确的版本升级姿势。
+升级新版本 安装python3.9 通过deadsnakes这个ppa源进行升级
+sudo add-apt-repository ppa:deadsnakes/ppa sudo apt update sudo apt install -y python3.9 然后通过update-alternatives切换python3的默认版本
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.'><title>ubuntu升级python版本正确姿势</title>
+
+<link rel='canonical' href='http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/'>
+
+<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='ubuntu升级python版本正确姿势'>
+<meta property='og:description' content='ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本引来了很多问题，可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
+其中python默认指向了python2.7,python3默认指向了3.5
+$ ls /usr/bin/ |grep python dh_pypy -&amp;gt; ../share/dh-python/dh_pypy* dh_python2* dh_python3 -&amp;gt; ../share/dh-python/dh_python3* pdb2.7 -&amp;gt; ../lib/python2.7/pdb.py* pdb3.5 -&amp;gt; ../lib/python3.5/pdb.py* py3versions -&amp;gt; ../share/python3/py3versions.py* pybuild -&amp;gt; ../share/dh-python/pybuild* python -&amp;gt; python2.7* python2 -&amp;gt; python2.7* python2.7* python2-jsondiff* python2-jsonpatch* python2-jsonpointer* python3 -&amp;gt; python3.5* python3.5* python3.5m* python3m -&amp;gt; python3.5m* pyversions -&amp;gt; ../share/python/pyversions.py* 在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。
+千万不要看国内各种转载复制粘贴的方案，以下是正确的版本升级姿势。
+升级新版本 安装python3.9 通过deadsnakes这个ppa源进行升级
+sudo add-apt-repository ppa:deadsnakes/ppa sudo apt update sudo apt install -y python3.9 然后通过update-alternatives切换python3的默认版本
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.'>
+<meta property='og:url' content='http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='python' /><meta property='article:published_time' content='2021-09-04T16:11:53&#43;08:00'/><meta property='article:modified_time' content='2021-09-04T16:11:53&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python.jpeg' />
+<meta name="twitter:title" content="ubuntu升级python版本正确姿势">
+<meta name="twitter:description" content="ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本引来了很多问题，可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
+其中python默认指向了python2.7,python3默认指向了3.5
+$ ls /usr/bin/ |grep python dh_pypy -&amp;gt; ../share/dh-python/dh_pypy* dh_python2* dh_python3 -&amp;gt; ../share/dh-python/dh_python3* pdb2.7 -&amp;gt; ../lib/python2.7/pdb.py* pdb3.5 -&amp;gt; ../lib/python3.5/pdb.py* py3versions -&amp;gt; ../share/python3/py3versions.py* pybuild -&amp;gt; ../share/dh-python/pybuild* python -&amp;gt; python2.7* python2 -&amp;gt; python2.7* python2.7* python2-jsondiff* python2-jsonpatch* python2-jsonpointer* python3 -&amp;gt; python3.5* python3.5* python3.5m* python3m -&amp;gt; python3.5m* pyversions -&amp;gt; ../share/python/pyversions.py* 在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。
+千万不要看国内各种转载复制粘贴的方案，以下是正确的版本升级姿势。
+升级新版本 安装python3.9 通过deadsnakes这个ppa源进行升级
+sudo add-apt-repository ppa:deadsnakes/ppa sudo apt update sudo apt install -y python3.9 然后通过update-alternatives切换python3的默认版本
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3."><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python.jpeg' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KZ420DZ0LK"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-KZ420DZ0LK', { 'anonymize_ip': false });
+}
+</script>
+
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="http://tinohean.top" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>Back</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/">
+                <img src="/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python_hu670cf3820e5abe15cd8fd5f6cf0ba20e_87306_800x0_resize_q75_box.jpeg"
+                        srcset="/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python_hu670cf3820e5abe15cd8fd5f6cf0ba20e_87306_800x0_resize_q75_box.jpeg 800w, /p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python_hu670cf3820e5abe15cd8fd5f6cf0ba20e_87306_1600x0_resize_q75_box.jpeg 1600w"
+                        width="800" 
+                        height="601" 
+                        loading="lazy"
+                        alt="Featured image of post ubuntu升级python版本正确姿势" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/">ubuntu升级python版本正确姿势</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Sep 04, 2021</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    3 min read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h1 id="ubuntu升级python版本正确姿势">ubuntu升级python版本正确姿势</h1>
+<h2 id="前言">前言</h2>
+<p>由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本引来了很多问题，可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e</p>
+<p>其中python默认指向了python2.7,python3默认指向了3.5</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">$ ls /usr/bin/ <span class="p">|</span>grep python
+dh_pypy -&gt; ../share/dh-python/dh_pypy*
+dh_python2*
+dh_python3 -&gt; ../share/dh-python/dh_python3*
+pdb2.7 -&gt; ../lib/python2.7/pdb.py*
+pdb3.5 -&gt; ../lib/python3.5/pdb.py*
+py3versions -&gt; ../share/python3/py3versions.py*
+pybuild -&gt; ../share/dh-python/pybuild*
+python -&gt; python2.7*
+python2 -&gt; python2.7*
+python2.7*
+python2-jsondiff*
+python2-jsonpatch*
+python2-jsonpointer*
+python3 -&gt; python3.5*
+python3.5*
+python3.5m*
+python3m -&gt; python3.5m*
+pyversions -&gt; ../share/python/pyversions.py*
+</code></pre></div><p>在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。</p>
+<p>千万不要看国内各种转载复制粘贴的方案，以下是正确的版本升级姿势。</p>
+<h2 id="升级新版本">升级新版本</h2>
+<h3 id="安装python39">安装python3.9</h3>
+<p>通过deadsnakes这个ppa源进行升级</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update
+sudo apt install -y python3.9
+</code></pre></div><p>然后通过update-alternatives切换python3的默认版本</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 <span class="m">0</span>
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.5 <span class="m">1</span>
+sudo update-alternatives --set python3 /usr/bin/python3.9
+</code></pre></div><h3 id="升级pip3">升级pip3</h3>
+<p>这时候你可能会发现一个问题：pip3失效了！！</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
+  File <span class="s2">&#34;/usr/bin/pip3&#34;</span>, line 9, in &lt;module&gt;
+    from pip import main
+  File <span class="s2">&#34;/usr/lib/python3/dist-packages/pip/__init__.py&#34;</span>, line 14, in &lt;module&gt;
+    from pip.utils import get_installed_distributions, get_prog
+  File <span class="s2">&#34;/usr/lib/python3/dist-packages/pip/utils/__init__.py&#34;</span>, line 23, in &lt;module&gt;
+    from pip.locations import <span class="o">(</span>
+  File <span class="s2">&#34;/usr/lib/python3/dist-packages/pip/locations.py&#34;</span>, line 9, in &lt;module&gt;
+    from distutils import sysconfig
+ImportError: cannot import name <span class="s1">&#39;sysconfig&#39;</span> from <span class="s1">&#39;distutils&#39;</span> <span class="o">(</span>/usr/lib/python3.9/distutils/__init__.py<span class="o">)</span>
+</code></pre></div><p>回头一想，python3升级了，pip是不是也要升级啊</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">curl -sSL https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+python3 get-pip.py
+</code></pre></div><p>报错如下</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
+  File <span class="s2">&#34;/home/ubuntu/get-pip.py&#34;</span>, line 27081, in &lt;module&gt;
+    main<span class="o">()</span>
+  File <span class="s2">&#34;/home/ubuntu/get-pip.py&#34;</span>, line 139, in main
+    bootstrap<span class="o">(</span><span class="nv">tmpdir</span><span class="o">=</span>tmpdir<span class="o">)</span>
+  File <span class="s2">&#34;/home/ubuntu/get-pip.py&#34;</span>, line 115, in bootstrap
+    monkeypatch_for_cert<span class="o">(</span>tmpdir<span class="o">)</span>
+  File <span class="s2">&#34;/home/ubuntu/get-pip.py&#34;</span>, line 96, in monkeypatch_for_cert
+    from pip._internal.commands.install import InstallCommand
+  File <span class="s2">&#34;&lt;frozen zipimport&gt;&#34;</span>, line 259, in load_module
+  File <span class="s2">&#34;/tmp/tmp6zu07luz/pip.zip/pip/_internal/commands/__init__.py&#34;</span>, line 9, in &lt;module&gt;
+  File <span class="s2">&#34;&lt;frozen zipimport&gt;&#34;</span>, line 259, in load_module
+  File <span class="s2">&#34;/tmp/tmp6zu07luz/pip.zip/pip/_internal/cli/base_command.py&#34;</span>, line 13, in &lt;module&gt;
+  File <span class="s2">&#34;&lt;frozen zipimport&gt;&#34;</span>, line 259, in load_module
+  File <span class="s2">&#34;/tmp/tmp6zu07luz/pip.zip/pip/_internal/cli/cmdoptions.py&#34;</span>, line 23, in &lt;module&gt;
+  File <span class="s2">&#34;&lt;frozen zipimport&gt;&#34;</span>, line 259, in load_module
+  File <span class="s2">&#34;/tmp/tmp6zu07luz/pip.zip/pip/_internal/cli/parser.py&#34;</span>, line 12, in &lt;module&gt;
+  File <span class="s2">&#34;&lt;frozen zipimport&gt;&#34;</span>, line 259, in load_module
+  File <span class="s2">&#34;/tmp/tmp6zu07luz/pip.zip/pip/_internal/configuration.py&#34;</span>, line 26, in &lt;module&gt;
+  File <span class="s2">&#34;&lt;frozen zipimport&gt;&#34;</span>, line 259, in load_module
+  File <span class="s2">&#34;/tmp/tmp6zu07luz/pip.zip/pip/_internal/utils/logging.py&#34;</span>, line 13, in &lt;module&gt;
+  File <span class="s2">&#34;&lt;frozen zipimport&gt;&#34;</span>, line 259, in load_module
+  File <span class="s2">&#34;/tmp/tmp6zu07luz/pip.zip/pip/_internal/utils/misc.py&#34;</span>, line 40, in &lt;module&gt;
+  File <span class="s2">&#34;&lt;frozen zipimport&gt;&#34;</span>, line 259, in load_module
+  File <span class="s2">&#34;/tmp/tmp6zu07luz/pip.zip/pip/_internal/locations/__init__.py&#34;</span>, line 14, in &lt;module&gt;
+  File <span class="s2">&#34;&lt;frozen zipimport&gt;&#34;</span>, line 259, in load_module
+  File <span class="s2">&#34;/tmp/tmp6zu07luz/pip.zip/pip/_internal/locations/_distutils.py&#34;</span>, line 9, in &lt;module&gt;
+ModuleNotFoundError: No module named <span class="s1">&#39;distutils.cmd&#39;</span>
+</code></pre></div><p>经过调研，这个实际是由于ubuntu的python问题导致的，简单来说就是当前解释器返回的path不对。</p>
+<p>pip安装脚本通过当前解释器获取全局系统变量PATH，默认是<code>/usr/lib/python3.9/site-packages/</code>，这个路径并不在<code>sys.path</code>中。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">python3 -c <span class="s1">&#39;import sys; print(sys.path)&#39;</span>
+<span class="o">[</span><span class="s1">&#39;&#39;</span>, <span class="s1">&#39;/usr/lib/python39.zip&#39;</span>, <span class="s1">&#39;/usr/lib/python3.9&#39;</span>, <span class="s1">&#39;/usr/lib/python3.9/lib-dynload&#39;</span>, <span class="s1">&#39;/usr/local/lib/python3.9/dist-packages&#39;</span>, <span class="s1">&#39;/usr/lib/python3/dist-packages&#39;</span><span class="o">]</span>
+</code></pre></div><p>而多个python3版本共有的sys.path是<code>/usr/lib/python3/dist-packages/</code>,这也将导致兼容性问题。比如说python3.5安装的模块，python3.9也会从中调用，但兼容性可能出问题。</p>
+<p>由于以上原因，安装过程中可能会获取错误版本的模块，也会导致安装目录不在<code>sys.path</code>中，即使安装成功后也无法在默认环境中执行pip。</p>
+<p>我们可以手动添加<code>/usr/lib/python3.9/site-packages</code>到默认的<code>sys.path</code>变量中，也可以指定安装目录到<code>sys.path</code>中。</p>
+<p>我们先试着把这个缺失的distutils模块补全，并在pip安装的时候指定目录到系统变量PATH下。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo apt install python3.9-venv
+python3 get-pip.py --target <span class="k">$(</span>python3 -c <span class="s1">&#39;import sys; print(sys.path[-1])&#39;</span><span class="k">)</span>
+
+</code></pre></div><p>或者可以更新下<code>sys.path</code></p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">mkdir /usr/lib/python3.9/dist-packages 
+<span class="nb">echo</span> /usr/lib/python3.9/site-packages &gt; /usr/lib/python3.9/dist-packages/site-packages.pth 
+</code></pre></div><p>发现成功了</p>
+<pre><code>...
+Installing collected packages: pip
+Successfully installed pip-21.3.1
+</code></pre><p>检查一下版本</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">pip3 --version
+</code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">WARNING: pip is being invoked by an old script wrapper. This will fail in a future version of pip.
+Please see https://github.com/pypa/pip/issues/5599 <span class="k">for</span> advice on fixing the underlying issue.
+To avoid this problem you can invoke Python with <span class="s1">&#39;-m pip&#39;</span> instead of running pip directly.
+pip 21.3.1 from /usr/lib/python3/dist-packages/pip <span class="o">(</span>python 3.9<span class="o">)</span>
+</code></pre></div><p>终于正常了！</p>
+<h3 id="替换python默认版本为python3">替换python默认版本为python3</h3>
+<p>此时，如果需要替换默认版本为3,同样通过update-alternatives配置</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 <span class="m">0</span>
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 <span class="m">1</span>
+sudo update-alternatives --set python /usr/bin/python3
+</code></pre></div><p>试试apt正常不</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo apt <span class="nb">help</span>
+</code></pre></div><p>显示一切正常</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">apt 1.2.32ubuntu0.2 <span class="o">(</span>amd64<span class="o">)</span>
+Usage: apt <span class="o">[</span>options<span class="o">]</span> <span class="nb">command</span>
+
+apt is a commandline package manager and provides commands <span class="k">for</span>
+searching and managing as well as querying information about packages.
+It provides the same functionality as the specialized APT tools,
+like apt-get and apt-cache, but enables options more suitable <span class="k">for</span>
+interactive use by default.
+
+Most used commands:
+  list - list packages based on package names
+  search - search in package descriptions
+  show - show package details
+  install - install packages
+  remove - remove packages
+  autoremove - Remove automatically all unused packages
+  update - update list of available packages
+  upgrade - upgrade the system by installing/upgrading packages
+  full-upgrade - upgrade the system by removing/installing/upgrading packages
+  edit-sources - edit the <span class="nb">source</span> information file
+
+See apt<span class="o">(</span>8<span class="o">)</span> <span class="k">for</span> more information about the available commands.
+Configuration options and syntax is detailed in apt.conf<span class="o">(</span>5<span class="o">)</span>.
+Information about how to configure sources can be found in sources.list<span class="o">(</span>5<span class="o">)</span>.
+Package and version choices can be expressed via apt_preferences<span class="o">(</span>5<span class="o">)</span>.
+Security details are available in apt-secure<span class="o">(</span>8<span class="o">)</span>.
+                                        This APT has Super Cow Powers.
+</code></pre></div><h3 id="问题修复">问题修复</h3>
+<p>唯一的问题是，如果版本切换回python3.5, pip3又失效了&hellip; 重新安装下pip</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">python3.5 get-pip.py --target <span class="k">$(</span>python3.5 -c <span class="s1">&#39;import sys; print(sys.path[-1])&#39;</span><span class="k">)</span>
+</code></pre></div><p>来回切换python3.5和python3.9,发现正常使用，完美～</p>
+<h3 id="注意事项">注意事项</h3>
+<p>一般来说，生产环境很少会进行python升级，基本不会进行默认版本替换。升级后的python3由于上文所说的原因，很多安装模块可能会失效，此时需要pip3重新安装。</p>
+<p>多版本的运行环境还是建议使用venv或者anaconda进行环境管理。</p>
+<h2 id="参考文档">参考文档</h2>
+<ol>
+<li><a class="link" href="https://docs.python-guide.org/starting/install3/linux/"  target="_blank" rel="noopener"
+    >https://docs.python-guide.org/starting/install3/linux/</a></li>
+<li><a class="link" href="https://pip.pypa.io/en/latest/installation/"  target="_blank" rel="noopener"
+    >https://pip.pypa.io/en/latest/installation/</a></li>
+<li><a class="link" href="https://github.com/pypa/get-pip/issues/124"  target="_blank" rel="noopener"
+    >https://github.com/pypa/get-pip/issues/124</a></li>
+</ol>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/python/">python</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/lake.b7b25110b382cae3afb4e59ab416fe18_hu4a54f6cc00d4e0599bb1fb51fbd2eda0_63589_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-t7JRELOCyuOvtOWatBb&#43;GA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">数据湖及其相关概念性调研</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">部署策略及容器化实现</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%B5%85%E8%B0%88chatops/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%B5%85%E8%B0%88chatops/chatops.047fdca1683487486942824c5121858c_hu2af93606f657e048f3b8c35cecf8603a_39849_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-BH/coWg0h0hpQoJMUSGFjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">浅谈ChatOps</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/paddle.f9980b85e5d47359ccd6cefec98ae32a_hu5438825b9b6d1014226d20d231e650c2_191045_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-&#43;ZgLheXUc1nM1s7&#43;yYrjKg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Paddle飞桨部署方案</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%9A%8F%E7%AC%94soul/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%9A%8F%E7%AC%94soul/soul.1ec3d9ceed2b95e92d1a2f57a754173e_hua5b7a4101002ac3de8aa87e6c8d8ffa6_107809_250x150_fill_q75_box_smart1.JPG" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy" 
+                        data-key="" 
+                        data-hash="md5-HsPZzu0rlektGi9Xp1QXPg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">【随笔】Soul</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+     
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2021 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">Table of contents</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#升级新版本">升级新版本</a>
+      <ol>
+        <li><a href="#安装python39">安装python3.9</a></li>
+        <li><a href="#升级pip3">升级pip3</a></li>
+        <li><a href="#替换python默认版本为python3">替换python默认版本为python3</a></li>
+        <li><a href="#问题修复">问题修复</a></li>
+        <li><a href="#注意事项">注意事项</a></li>
+      </ol>
+    </li>
+    <li><a href="#参考文档">参考文档</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>
