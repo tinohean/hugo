@@ -35,12 +35,6 @@
     <loc>http://tinohean.top/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/</loc>
     <lastmod>2021-09-21T23:11:56+08:00</lastmod>
   </url><url>
-    <loc>http://tinohean.top/tags/python/</loc>
-    <lastmod>2021-09-04T16:11:53+08:00</lastmod>
-  </url><url>
-    <loc>http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/</loc>
-    <lastmod>2021-09-04T16:11:53+08:00</lastmod>
-  </url><url>
     <loc>http://tinohean.top/tags/chatops/</loc>
     <lastmod>2021-09-02T23:51:08+08:00</lastmod>
   </url><url>
@@ -92,6 +86,12 @@
     <loc>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E4%B8%89%E5%8D%81%E8%80%8C%E7%AB%8B/</loc>
     <lastmod>2020-08-05T09:25:29+08:00</lastmod>
   </url><url>
+    <loc>http://tinohean.top/tags/helm/</loc>
+    <lastmod>2020-05-10T16:21:03+08:00</lastmod>
+  </url><url>
+    <loc>http://tinohean.top/p/helm%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E5%A4%B1%E8%B4%A5%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/</loc>
+    <lastmod>2020-05-10T16:21:03+08:00</lastmod>
+  </url><url>
     <loc>http://tinohean.top/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/</loc>
     <lastmod>2020-02-14T22:52:33+08:00</lastmod>
   </url><url>
@@ -136,6 +136,8 @@
   </url><url>
     <loc>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%9B%AA%E5%B1%B1/</loc>
     <lastmod>2017-04-02T18:16:30+08:00</lastmod>
+  </url><url>
+    <loc>http://tinohean.top/p/</loc>
   </url><url>
     <loc>http://tinohean.top/search/</loc>
   </url>

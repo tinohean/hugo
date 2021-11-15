@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>helm on 半岛无风</title>
+    <link>http://tinohean.top/tags/helm/</link>
+    <description>Recent content in helm on 半岛无风</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 10 May 2020 16:21:03 +0800</lastBuildDate><atom:link href="http://tinohean.top/tags/helm/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>helm镜像拉取失败的解决方案</title>
+      <link>http://tinohean.top/p/helm%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E5%A4%B1%E8%B4%A5%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/</link>
+      <pubDate>Sun, 10 May 2020 16:21:03 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/helm%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E5%A4%B1%E8%B4%A5%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/</guid>
+      <description>背景 最近在国内节点测试Flagger的时候，使用helm部署经常遇到镜像拉取失败的问题。
+Release &amp;#34;ingress-nginx&amp;#34; does not exist. Installing it now. Error: failed to download &amp;#34;ingress-nginx/ingress-nginx&amp;#34; 配置代理 Proxychains代理失效 最初尝试使用socks5代理Proxychains,实际测试下来没有效果。翻看Proxychains的官方文档说明：
+ ProxyChains is a UNIX program, that hooks network-related libc functions in dynamically linked programs via a preloaded DLL and redirects the connections through SOCKS4a/5 or HTTP proxies
+ 可以看到，proxychains的魔法是劫持网络相关的libc动态库，因此只适用于链接了相同动态库的程序，而对于脚本或者基于Go这类静态链接编译的语言开发的程序是无效的。
+很不幸的是，Helm和Docker都是基于Go开发的。只能另寻出路。
+graftcp代理 再次尝试使用另一款支持静态链接编译程序的graftcp,注意提前把apiserver的ip写入黑名单文件$YOUR_BLACKLIST_IP,否则会干扰正常的kubectl和k8s集群的交互。
+$ graftcp-local &amp;amp; $ graftcp -p $YOUR_PORT -b $YOUR_BLACKLIST_IP bash $^ helm install -i ... ... Release &amp;#34;ingress-nginx&amp;#34; does not exist.</description>
+    </item>
+    
+  </channel>
+</rss>

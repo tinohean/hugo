@@ -66,20 +66,6 @@ A/B测试倾向于实验和探索测试。优点是成本低，工具齐全。�
 设置在滚动发布期间，Deployment最大允许多少个pod处于不可用状态。谨慎设置，尤其是在流量高峰期。一般我们设置为0，副本数量会一直保持在期待状态中。  配置示例 apiVersion:apps/v1kind:Deploymentmetadata:creationTimestamp:nulllabels:app:nginxname:nginxspec:replicas:10minReadySeconds:10selector:matchLabels:app:nginxstrategy:rollingUpdate:maxSurge:1maxUnavailable:1type:RollingUpdatetemplate:metadata:creationTimestamp:nulllabels:app:nginxspec:containers:- image:nginxname:nginxresources:{}readinessProbe:failureThreshold:10httpGet:path:/readyport:80scheme:HTTPinitialDelaySeconds:5periodSeconds:5successThreshold:1timeoutSeconds:3status:{}金丝雀发布 尽管可以通过kubectl rollout pause暂停滚动更新方式实现手动粗粒度灰度，但由于无法精准控制比例，官方文档建议是建立多个Deployment实现。</description>
         </item>
         <item>
-        <title>ubuntu升级python版本正确姿势</title>
-        <link>http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/</link>
-        <pubDate>Sat, 04 Sep 2021 16:11:53 +0800</pubDate>
-        
-        <guid>http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/</guid>
-        <description>&lt;img src="http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python.jpeg" alt="Featured image of post ubuntu升级python版本正确姿势" /&gt;ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本引来了很多问题，可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
-其中python默认指向了python2.7,python3默认指向了3.5
-$ ls /usr/bin/ |grep python dh_pypy -&amp;gt; ../share/dh-python/dh_pypy* dh_python2* dh_python3 -&amp;gt; ../share/dh-python/dh_python3* pdb2.7 -&amp;gt; ../lib/python2.7/pdb.py* pdb3.5 -&amp;gt; ../lib/python3.5/pdb.py* py3versions -&amp;gt; ../share/python3/py3versions.py* pybuild -&amp;gt; ../share/dh-python/pybuild* python -&amp;gt; python2.7* python2 -&amp;gt; python2.7* python2.7* python2-jsondiff* python2-jsonpatch* python2-jsonpointer* python3 -&amp;gt; python3.5* python3.5* python3.5m* python3m -&amp;gt; python3.5m* pyversions -&amp;gt; ../share/python/pyversions.py* 在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。
-千万不要看国内各种转载复制粘贴的方案，以下是正确的版本升级姿势。
-升级新版本 安装python3.9 通过deadsnakes这个ppa源进行升级
-sudo add-apt-repository ppa:deadsnakes/ppa sudo apt update sudo apt install -y python3.9 然后通过update-alternatives切换python3的默认版本
-sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.</description>
-        </item>
-        <item>
         <title>浅谈ChatOps</title>
         <link>http://tinohean.top/p/%E6%B5%85%E8%B0%88chatops/</link>
         <pubDate>Thu, 02 Sep 2021 23:51:08 +0800</pubDate>
@@ -224,6 +210,20 @@ Alerts Rules blackbox_exporter 常用的只有存活状态和状态码异常告�
 实践证明，别人的方式永远不是自己的解药。
 后来，听说终南山因为隐居者众多，房租物价膨胀。那些真的放弃物质的隐居者又被迫回归了城市，令人遗憾。
 世间种种，总会有自我意识的延续载体。而人的站立，终究要在这样的混乱中成立起来，担负起责任，不可推卸，一直前行。</description>
+        </item>
+        <item>
+        <title>helm镜像拉取失败的解决方案</title>
+        <link>http://tinohean.top/p/helm%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E5%A4%B1%E8%B4%A5%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/</link>
+        <pubDate>Sun, 10 May 2020 16:21:03 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/helm%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E5%A4%B1%E8%B4%A5%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/</guid>
+        <description>&lt;img src="http://tinohean.top/p/helm%E9%95%9C%E5%83%8F%E6%8B%89%E5%8F%96%E5%A4%B1%E8%B4%A5%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/helm.png" alt="Featured image of post helm镜像拉取失败的解决方案" /&gt;背景 最近在国内节点测试Flagger的时候，使用helm部署经常遇到镜像拉取失败的问题。
+Release &amp;#34;ingress-nginx&amp;#34; does not exist. Installing it now. Error: failed to download &amp;#34;ingress-nginx/ingress-nginx&amp;#34; 配置代理 Proxychains代理失效 最初尝试使用socks5代理Proxychains,实际测试下来没有效果。翻看Proxychains的官方文档说明：
+ ProxyChains is a UNIX program, that hooks network-related libc functions in dynamically linked programs via a preloaded DLL and redirects the connections through SOCKS4a/5 or HTTP proxies
+ 可以看到，proxychains的魔法是劫持网络相关的libc动态库，因此只适用于链接了相同动态库的程序，而对于脚本或者基于Go这类静态链接编译的语言开发的程序是无效的。
+很不幸的是，Helm和Docker都是基于Go开发的。只能另寻出路。
+graftcp代理 再次尝试使用另一款支持静态链接编译程序的graftcp,注意提前把apiserver的ip写入黑名单文件$YOUR_BLACKLIST_IP,否则会干扰正常的kubectl和k8s集群的交互。
+$ graftcp-local &amp;amp; $ graftcp -p $YOUR_PORT -b $YOUR_BLACKLIST_IP bash $^ helm install -i ... ... Release &amp;#34;ingress-nginx&amp;#34; does not exist.</description>
         </item>
         <item>
         <title>Kubeadm部署kubernetes高可用集群</title>
@@ -430,6 +430,19 @@ local:
 使我彻夜难眠
 在当年词汇匮乏的我心里留下了史诗般的具象。雪山这一画面感极强的描述简直惊为天人。这就是诗歌的魅力，也是海子的天才，简单的几个词语的使用，就能形成如此诗化的意境。海子心中的雪山真实的欲求是什么，我们已经无从知道了。然而，仅仅从意象而言，诗歌本身就有了意义。把脑中的画面形象地描述出来，写作者追求的终极目的之一无非是这样的境界了吧。为此，我决定开设个人网站，把内心所想化作一座座雪山。
 或许哪天，你看到这些文字，知晓了我当时的心境。那么，你也曾抵达我的峰顶。</description>
+        </item>
+        <item>
+        <title></title>
+        <link>http://tinohean.top/p/</link>
+        <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+        
+        <guid>http://tinohean.top/p/</guid>
+        <description>jj&amp;mdash; title: ubuntu升级python版本正确姿势 description: date: 2021-09-04T16:11:53+08:00 image: python.jpeg tags: - &amp;ldquo;python&amp;rdquo; categories: - &amp;ldquo;Blog&amp;rdquo; ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本可能会引来了很多问题，而ubuntu的base Debian对于python安装的额外操作更是引发了更多的问题，简言之，Debian系对于python的管理就是一坨翔！
+具体讨论可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
+其中python默认指向了python2.7,python3默认指向了3.5
+$ ls /usr/bin/ |grep python dh_pypy -&amp;gt; ../share/dh-python/dh_pypy* dh_python2* dh_python3 -&amp;gt; ../share/dh-python/dh_python3* pdb2.7 -&amp;gt; ../lib/python2.7/pdb.py* pdb3.5 -&amp;gt; ../lib/python3.5/pdb.py* py3versions -&amp;gt; ../share/python3/py3versions.py* pybuild -&amp;gt; ../share/dh-python/pybuild* python -&amp;gt; python2.7* python2 -&amp;gt; python2.7* python2.7* python2-jsondiff* python2-jsonpatch* python2-jsonpointer* python3 -&amp;gt; python3.5* python3.5* python3.5m* python3m -&amp;gt; python3.5m* pyversions -&amp;gt; ../share/python/pyversions.py* 在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。
+以下是正确的版本升级姿势。
+升级新版本 安装python3.9 通过deadsnakes这个ppa源进行升级</description>
         </item>
         
     </channel>
