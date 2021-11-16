@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en-us">
     <head><meta charset='utf-8'>
-<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本引来了很多问题，可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本可能会引来了很多问题，而ubuntu的base Debian对于python安装的额外操作更是引发了更多的问题，简言之，Debian系对于python的管理就是一坨翔！
+具体讨论可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
 其中python默认指向了python2.7,python3默认指向了3.5
 $ ls /usr/bin/ |grep python dh_pypy -&amp;gt; ../share/dh-python/dh_pypy* dh_python2* dh_python3 -&amp;gt; ../share/dh-python/dh_python3* pdb2.7 -&amp;gt; ../lib/python2.7/pdb.py* pdb3.5 -&amp;gt; ../lib/python3.5/pdb.py* py3versions -&amp;gt; ../share/python3/py3versions.py* pybuild -&amp;gt; ../share/dh-python/pybuild* python -&amp;gt; python2.7* python2 -&amp;gt; python2.7* python2.7* python2-jsondiff* python2-jsonpatch* python2-jsonpointer* python3 -&amp;gt; python3.5* python3.5* python3.5m* python3m -&amp;gt; python3.5m* pyversions -&amp;gt; ../share/python/pyversions.py* 在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。
-千万不要看国内各种转载复制粘贴的方案，以下是正确的版本升级姿势。
+以下是正确的版本升级姿势。
 升级新版本 安装python3.9 通过deadsnakes这个ppa源进行升级
 sudo add-apt-repository ppa:deadsnakes/ppa sudo apt update sudo apt install -y python3.9 然后通过update-alternatives切换python3的默认版本
 sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.'><title>ubuntu升级python版本正确姿势</title>
@@ -12,10 +13,11 @@ sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.'><
 <link rel='canonical' href='http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/'>
 
 <link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='ubuntu升级python版本正确姿势'>
-<meta property='og:description' content='ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本引来了很多问题，可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
+<meta property='og:description' content='ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本可能会引来了很多问题，而ubuntu的base Debian对于python安装的额外操作更是引发了更多的问题，简言之，Debian系对于python的管理就是一坨翔！
+具体讨论可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
 其中python默认指向了python2.7,python3默认指向了3.5
 $ ls /usr/bin/ |grep python dh_pypy -&amp;gt; ../share/dh-python/dh_pypy* dh_python2* dh_python3 -&amp;gt; ../share/dh-python/dh_python3* pdb2.7 -&amp;gt; ../lib/python2.7/pdb.py* pdb3.5 -&amp;gt; ../lib/python3.5/pdb.py* py3versions -&amp;gt; ../share/python3/py3versions.py* pybuild -&amp;gt; ../share/dh-python/pybuild* python -&amp;gt; python2.7* python2 -&amp;gt; python2.7* python2.7* python2-jsondiff* python2-jsonpatch* python2-jsonpointer* python3 -&amp;gt; python3.5* python3.5* python3.5m* python3m -&amp;gt; python3.5m* pyversions -&amp;gt; ../share/python/pyversions.py* 在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。
-千万不要看国内各种转载复制粘贴的方案，以下是正确的版本升级姿势。
+以下是正确的版本升级姿势。
 升级新版本 安装python3.9 通过deadsnakes这个ppa源进行升级
 sudo add-apt-repository ppa:deadsnakes/ppa sudo apt update sudo apt install -y python3.9 然后通过update-alternatives切换python3的默认版本
 sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.'>
@@ -23,10 +25,11 @@ sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.'>
 <meta property='og:site_name' content='半岛无风'>
 <meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='python' /><meta property='article:published_time' content='2021-09-04T16:11:53&#43;08:00'/><meta property='article:modified_time' content='2021-09-04T16:11:53&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python.jpeg' />
 <meta name="twitter:title" content="ubuntu升级python版本正确姿势">
-<meta name="twitter:description" content="ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本引来了很多问题，可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
+<meta name="twitter:description" content="ubuntu升级python版本正确姿势 前言 由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本可能会引来了很多问题，而ubuntu的base Debian对于python安装的额外操作更是引发了更多的问题，简言之，Debian系对于python的管理就是一坨翔！
+具体讨论可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
 其中python默认指向了python2.7,python3默认指向了3.5
 $ ls /usr/bin/ |grep python dh_pypy -&amp;gt; ../share/dh-python/dh_pypy* dh_python2* dh_python3 -&amp;gt; ../share/dh-python/dh_python3* pdb2.7 -&amp;gt; ../lib/python2.7/pdb.py* pdb3.5 -&amp;gt; ../lib/python3.5/pdb.py* py3versions -&amp;gt; ../share/python3/py3versions.py* pybuild -&amp;gt; ../share/dh-python/pybuild* python -&amp;gt; python2.7* python2 -&amp;gt; python2.7* python2.7* python2-jsondiff* python2-jsonpatch* python2-jsonpointer* python3 -&amp;gt; python3.5* python3.5* python3.5m* python3m -&amp;gt; python3.5m* pyversions -&amp;gt; ../share/python/pyversions.py* 在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。
-千万不要看国内各种转载复制粘贴的方案，以下是正确的版本升级姿势。
+以下是正确的版本升级姿势。
 升级新版本 安装python3.9 通过deadsnakes这个ppa源进行升级
 sudo add-apt-repository ppa:deadsnakes/ppa sudo apt update sudo apt install -y python3.9 然后通过update-alternatives切换python3的默认版本
 sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3."><meta name="twitter:card" content="summary_large_image">
@@ -150,7 +153,7 @@ if (!doNotTrack) {
 
 
                 <time class="article-time--reading">
-                    4 min read
+                    5 min read
                 </time>
             </div>
         
@@ -162,7 +165,8 @@ if (!doNotTrack) {
     <section class="article-content">
     <h1 id="ubuntu升级python版本正确姿势">ubuntu升级python版本正确姿势</h1>
 <h2 id="前言">前言</h2>
-<p>由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本引来了很多问题，可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e</p>
+<p>由于兼容性和历史原因，ubuntu（16.04 LTS）系统自带两个python版本：python2.7和python3.5,维护两个版本可能会引来了很多问题，而ubuntu的base Debian对于python安装的额外操作更是引发了更多的问题，简言之，Debian系对于python的管理就是一坨翔！</p>
+<p>具体讨论可以参考https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e</p>
 <p>其中python默认指向了python2.7,python3默认指向了3.5</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">$ ls /usr/bin/ <span class="p">|</span>grep python
 dh_pypy -&gt; ../share/dh-python/dh_pypy*
@@ -184,7 +188,7 @@ python3.5m*
 python3m -&gt; python3.5m*
 pyversions -&gt; ../share/python/pyversions.py*
 </code></pre></div><p>在一些使用场景中，我们需要更高的python版本，有时需要更换默认版本为python3，由于以上原因我们会发现升级完成后pip不可用了，甚至apt这个最基础的包管理命令都不可用了。</p>
-<p>千万不要看国内各种转载复制粘贴的方案，以下是正确的版本升级姿势。</p>
+<p>以下是正确的版本升级姿势。</p>
 <h2 id="升级新版本">升级新版本</h2>
 <h3 id="安装python39">安装python3.9</h3>
 <p>通过deadsnakes这个ppa源进行升级</p>
@@ -300,7 +304,7 @@ Package and version choices can be expressed via apt_preferences<span class="o">
 Security details are available in apt-secure<span class="o">(</span>8<span class="o">)</span>.
                                         This APT has Super Cow Powers.
 </code></pre></div><h3 id="问题修复">问题修复</h3>
-<p>切换python默认版本是一个风险很高的操作，可能导致系统很多默认命令使用不了。</p>
+<p>升级或者切换python默认版本是一个风险很高的操作，可能导致系统很多默认命令使用不了。</p>
 <ol>
 <li>比如，输入一个无效的命令，正常会提示命令不存在，但是现在</li>
 </ol>
@@ -339,8 +343,10 @@ ModuleNotFoundError: No module named <span class="s1">&#39;gdbm&#39;</span>
   File <span class="s2">&#34;/usr/lib/python3/dist-packages/softwareproperties/SoftwareProperties.py&#34;</span>, line 27, in &lt;module&gt;
     import apt_pkg
 ModuleNotFoundError: No module named <span class="s1">&#39;apt_pkg&#39;</span>
-</code></pre></div><p>同样是apt_pkg这个模块的兼容性问题导致。不同的是，由于依赖的so包问题，我们需要先卸载原版本的python3-apt,然后重新安装。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">sudo apt remove python3-apt <span class="o">&amp;&amp;</span> sudo apt autoremove <span class="o">&amp;&amp;</span> sudo apt autoclean
+</code></pre></div><p>同样是apt_pkg这个模块的兼容性问题导致。不同的是，由于依赖的so包问题，我们需要链接原来的so包,然后重新安装。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="nb">cd</span> /usr/lib/python3/dist-packages
+sudo ln -s apt_pkg.cpython-35m-x86_64-linux-gnu.so apt_pkg.so
+sudo apt purge python3-get
 sudo apt update <span class="o">&amp;&amp;</span> sudo apt install python3-apt
 sudo apt install software-properties-common
 </code></pre></div><p>再次执行<code>sudo add-apt-repository --yes --update ppa:ansible/ansible</code>发现报错</p>
@@ -363,6 +369,7 @@ AttributeError: <span class="s1">&#39;Thread&#39;</span> object has no attribute
 <h3 id="注意事项">注意事项</h3>
 <p>一般来说，生产环境很少会进行python升级，基本不会进行默认版本替换。升级后的python3由于上文所说的原因，很多安装模块可能会失效，此时需要pip3重新安装。</p>
 <p>为了避免上述的很多奇葩问题，默认版本切换最好通过用户家目录变量配置alias实现。</p>
+<p>各个版本下的模块尽量采用<code>python3.X -m pip install XX</code>进行环境隔离。</p>
 <p>多版本的运行环境还是建议使用venv或者anaconda进行环境管理。</p>
 <h2 id="参考文档">参考文档</h2>
 <ol>
