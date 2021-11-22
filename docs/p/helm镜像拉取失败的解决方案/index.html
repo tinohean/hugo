@@ -188,10 +188,10 @@ ingress-nginx-4.0.6.tgz
 <p>两种解决思路</p>
 <ul>
 <li>node上开启docker代理，一劳永逸</li>
-<li>node上手动通过graftcp下载或者导入其他节点的镜像</li>
+<li>node上手动通过其他方式下载或者导入其他节点的镜像</li>
 </ul>
 <h4 id="docker开启代理">docker开启代理</h4>
-<p>一劳永逸的办法是在所有node上开启docker代理，缺点是必须得重启docker,在某些线上环境可能不便于操作。</p>
+<p>一劳永逸的办法是在所有node上开启docker代理，缺点是只支持http和https七层，而且必须得重启docker,在某些线上环境可能不便于操作。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">$ sudo mkdir -p /etc/systemd/system/docker.service.d
 $ sudo vim /etc/systemd/system/docker.service.d/http-proxy.conf
 <span class="o">[</span>Service<span class="o">]</span>
@@ -199,8 +199,9 @@ $ sudo vim /etc/systemd/system/docker.service.d/http-proxy.conf
 <span class="nv">Environment</span><span class="o">=</span><span class="s2">&#34;HTTPS_PROXY=https://proxy.example.com:443&#34;</span>
 $ sudo systemctl daemon-reload
 $ sudo systemctl restart docker
-</code></pre></div><h4 id="镜像下载或导入">镜像下载或导入</h4>
-<p>除了代理外，我们可以通过其他手段提前把镜像拉到node上，比如手动代理docker pull,从其他配置了代理的节点上导入。不过，首先我们得确定chart中定义了什么image。</p>
+</code></pre></div><p>国内可以搭配ss(socks5)+privoxy(socks5转http)使用。</p>
+<h4 id="镜像下载或导入">镜像下载或导入</h4>
+<p>除了docker配置代理外，我们可以通过其他手段提前把镜像拉到node上，比如从其他配置了代理的节点上导入。不过，首先我们得确定chart中定义了什么image。</p>
 <p>把上述的缓存目录配置解压出来,检查value.yaml的配置</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w">
 </span><span class="w">    </span><span class="nt">registry</span><span class="p">:</span><span class="w"> </span><span class="l">k8s.gcr.io</span><span class="w">
@@ -216,7 +217,7 @@ $ sudo systemctl restart docker
 </span><span class="w">    </span><span class="nt">registry</span><span class="p">:</span><span class="w"> </span><span class="l">k8s.gcr.io</span><span class="w">
 </span><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">ingress-nginx/kube-webhook-certgen</span><span class="w">
 </span><span class="w">    </span><span class="nt">tag</span><span class="p">:</span><span class="w"> </span><span class="l">v1.1.1</span><span class="w">
-</span></code></pre></div><p>发现以上三个镜像，镜像下载只需要通过graftcp开启的bash中执行<code>docker pull</code>即可，此处不再赘述。重点讲下镜像的导入。</p>
+</span></code></pre></div><p>发现以上三个镜像，镜像下载只需要在备好代理的节点下载好，重点讲下镜像的导入。</p>
 <p>首先，在没有网络障碍的节点进行正常的镜像下载后，把镜像打包</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">docker save -o controller.tar k8s.gcr.io/ingress-nginx/controller:v1.0.4
 docker save -o webhook.tar k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.1.1
