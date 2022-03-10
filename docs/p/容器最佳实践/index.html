@@ -14,7 +14,7 @@ docker build -t myimage:latest -f- https://github.com/docker-library/hello-world
 
 <link rel='canonical' href='http://tinohean.top/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/'>
 
-<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='容器最佳实践'>
+<link rel="stylesheet" href="/scss/style.min.55acd6a4f6bb8d5e834a61b3655f322dc64db5391905e41e2a612548fb36a6ff.css"><meta property='og:title' content='容器最佳实践'>
 <meta property='og:description' content='容器构建最佳实践 容器的临时性 这个原则意味着容器可以被随时暂停，销毁，然后重建。容器是无状态的。有状态的数据应该持久化到后端服务中。
 容器构建上下文 build context指docker build执行时的当前目录，默认会找context的Dockerfile进行构建，也可以手动-f指定Dockerfile文件,也可以指定构建目录。
 当前目录的所有目录和文件都会被发送到docker daemon当作构建的上下文，过多、过大的文件都会使得镜像构建时间加长，镜像大小变大。
@@ -86,7 +86,7 @@ if (!doNotTrack) {
 ">
     
         <div id="article-toolbar">
-            <a href="http://tinohean.top" class="back-home">
+            <a href="/" class="back-home">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
   <path stroke="none" d="M0 0h24v24H0z"/>
   <polyline points="15 6 9 12 15 18" />
@@ -159,7 +159,7 @@ if (!doNotTrack) {
 
 
                 <time class="article-time--reading">
-                    2 min read
+                    2 minute read
                 </time>
             </div>
         
@@ -328,18 +328,25 @@ temp?
 <p>容器提供了一种简单且标准化的日志处理方式，一般应用可以通过写入<code>stdin</code>和<code>stderr</code>中，使用 <code>docker logs</code>可以查看。在k8s中，可以通过fluent-bit进行收集，进一步转发到其他日志系统中，比如Fluentd,EFK。</p>
 <p>这种标准一般采用json格式，可读性稍差。</p>
 <p>对于一些不好写入<code>stdin</code>和<code>stderr</code>的应用，比如tomcat,可以通过边车模式配置一个专门用于收集日志和处理日志轮询的容器。
-<figure style="flex-grow: 116; flex-basis: 279px">
-		<a href="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar.jpeg" data-size="438x376"><img src="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar.jpeg"
-				srcset="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar_hu29c20fb19d2aaa59a3207076dda60f90_22282_480x0_resize_q75_box.jpeg 480w, /p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar_hu29c20fb19d2aaa59a3207076dda60f90_22282_1024x0_resize_q75_box.jpeg 1024w"
-				width="438"
-				height="376"
-				loading="lazy"
-				alt="sidecar">
-		</a>
-		
-		<figcaption>sidecar</figcaption>
-		
-	</figure></p>
+<figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 116; 
+			flex-basis: 279px"
+	>
+	<a href="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar.jpeg" data-size="438x376">
+		<img src="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar.jpeg"
+			width="438"
+			height="376"
+			srcset="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar_hu29c20fb19d2aaa59a3207076dda60f90_22282_480x0_resize_q75_box.jpeg 480w, /p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/sidecar_hu29c20fb19d2aaa59a3207076dda60f90_22282_1024x0_resize_q75_box.jpeg 1024w"
+			loading="lazy"
+			alt="sidecar">
+	</a>
+	
+	<figcaption>sidecar</figcaption>
+	
+</figure></p>
 <h3 id="确保容器无状态且不可变">确保容器无状态且不可变</h3>
 <p>无状态并不是不可以有状态，而是任何状态（任何类型的持久性数据）均存储在容器之外，比如持久卷中。<br>
 不变性是指容器在其生命周期内不会被修改。如果应用更新，则需要重建容器。这样容器部署更安全，可重复性更高。</p>
@@ -361,18 +368,25 @@ temp?
 <p>黑盒监控是指从外部检查应用的可用性，容器应用和传统应用没有区别。</p>
 <p>白盒监控指使用某种特别访问权限检查应用，并收集终端用户无法查看到的行为指标。一般使用prometheus方案，请求应用的暴露的监控端点，比如<code>/metrics</code>url。</p>
 <p>有些应用无法实现http端点模式，此类可以通过边车模式，比如java类应用可以通过jmx_exporter边车容器来协助暴露监控数据，再提供给prometheus。
-<figure style="flex-grow: 145; flex-basis: 349px">
-		<a href="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus.png" data-size="901x619"><img src="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus.png"
-				srcset="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus_hu6f45ccac5d453a9351222f595a8d33e9_53358_480x0_resize_box_3.png 480w, /p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus_hu6f45ccac5d453a9351222f595a8d33e9_53358_1024x0_resize_box_3.png 1024w"
-				width="901"
-				height="619"
-				loading="lazy"
-				alt="exporter">
-		</a>
-		
-		<figcaption>exporter</figcaption>
-		
-	</figure></p>
+<figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 145; 
+			flex-basis: 349px"
+	>
+	<a href="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus.png" data-size="901x619">
+		<img src="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus.png"
+			width="901"
+			height="619"
+			srcset="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus_hu6f45ccac5d453a9351222f595a8d33e9_53358_480x0_resize_box_3.png 480w, /p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/prometheus_hu6f45ccac5d453a9351222f595a8d33e9_53358_1024x0_resize_box_3.png 1024w"
+			loading="lazy"
+			alt="exporter">
+	</a>
+	
+	<figcaption>exporter</figcaption>
+	
+</figure></p>
 <h3 id="公开应用的运行情况">公开应用的运行情况</h3>
 <p>其实就是探针，包括健康探针，就续探针，此处不再赘述。</p>
 <h3 id="避免以root身份运行">避免以root身份运行</h3>
@@ -422,6 +436,8 @@ temp?
     
 </article>
 
+    
+
     <aside class="related-contents--wrapper">
     
     
@@ -438,8 +454,9 @@ temp?
                 <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post 部署策略及容器化实现"
+                        
                         data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
                 
             </div>
@@ -460,8 +477,9 @@ temp?
                 <img src="/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/cmd.3a98d9a5eb6c40084d7f8312c61175d1_hu6e16d3621c69d4baadb7f1b7e4fbf505_28691_250x150_fill_box_smart1_3.png" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post CMD和ENTRYPOINT的配置比对详解"
+                        
                         data-hash="md5-OpjZpetsQAhNf4MSxhF10Q==">
                 
             </div>
@@ -482,8 +500,9 @@ temp?
                 <img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/container.f6e588456d243f6b3691eae8fbb21613_hued08ec2480e5693b7d58c33103917ef1_43947_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post 应用容器化改造的设计原则及模式"
+                        
                         data-hash="md5-9uWIRW0kP2s2kero&#43;7IWEw==">
                 
             </div>
@@ -497,6 +516,29 @@ temp?
                 
                     
 <article class="has-image">
+    <a href="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/hardware_monitor.0afb938fee3d45955dcc45ce112f7279_hu29c20fb19d2aaa59a3207076dda60f90_49933_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post node_exporter在k8s集群的部署方案"
+                        
+                        data-hash="md5-CvuTj&#43;49RZVdzEXOES9yeQ==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">node_exporter在k8s集群的部署方案</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
     <a href="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/">
         
         
@@ -504,8 +546,9 @@ temp?
                 <img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/lake.b7b25110b382cae3afb4e59ab416fe18_hu4a54f6cc00d4e0599bb1fb51fbd2eda0_63589_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post 数据湖及其相关概念性调研"
+                        
                         data-hash="md5-t7JRELOCyuOvtOWatBb&#43;GA==">
                 
             </div>
@@ -517,35 +560,13 @@ temp?
     </a>
 </article>
                 
-                    
-<article class="has-image">
-    <a href="/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/">
-        
-        
-            <div class="article-image">
-                <img src="/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python.8c8d3f1f65e352e0ecafd279a08eb0c1_hu670cf3820e5abe15cd8fd5f6cf0ba20e_87306_250x150_fill_q75_box_smart1.jpeg" 
-                        width="250" 
-                        height="150" 
-                        loading="lazy" 
-                        data-key="" 
-                        data-hash="md5-jI0/H2XjUuDsr9J5oI6wwQ==">
-                
-            </div>
-        
-
-        <div class="article-details">
-            <h2 class="article-title">ubuntu升级python版本正确姿势</h2>
-        </div>
-    </a>
-</article>
-                
             </div>
         </div>
     
 </aside>
 
      
-     
+    
         
     <script src="https://utteranc.es/client.js" 
         repo="tinohean/hugo"
@@ -597,12 +618,12 @@ temp?
         
             2017 - 
         
-        2021 半岛无风
+        2022 半岛无风
     </section>
     
     <section class="powerby">
         Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
-        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.6.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
     </section>
 </footer>
 

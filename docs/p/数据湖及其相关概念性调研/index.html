@@ -23,7 +23,7 @@
 
 <link rel='canonical' href='http://tinohean.top/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/'>
 
-<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='数据湖及其相关概念性调研'>
+<link rel="stylesheet" href="/scss/style.min.55acd6a4f6bb8d5e834a61b3655f322dc64db5391905e41e2a612548fb36a6ff.css"><meta property='og:title' content='数据湖及其相关概念性调研'>
 <meta property='og:description' content='数据湖概念性调研 近期数仓建设统一实时数据系统和离线报表无从着手，亟需进行架构上的升级。以下是针对传统数仓的痛点而产生的数据湖概念性调研，也包括一些大数据基本概念的阐述。
 数据仓库   数据库(Database)
 传统的关系型数据库的主要应用是联机事务处理OLTP（On-Line Transaction Processing），主要是基本的、日常的事务处理，例如业务报表。 常见的Mysql,Oracle,MariaDB等。
@@ -113,7 +113,7 @@ if (!doNotTrack) {
 ">
     
         <div id="article-toolbar">
-            <a href="http://tinohean.top" class="back-home">
+            <a href="/" class="back-home">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
   <path stroke="none" d="M0 0h24v24H0z"/>
   <polyline points="15 6 9 12 15 18" />
@@ -186,7 +186,7 @@ if (!doNotTrack) {
 
 
                 <time class="article-time--reading">
-                    2 min read
+                    2 minute read
                 </time>
             </div>
         
@@ -395,18 +395,25 @@ parquet文件一旦写入HDFS文件，要想改数据，就只能全量重新写
 </table>
 <h3 id="架构">架构</h3>
 <p>示例架构
-<figure style="flex-grow: 198; flex-basis: 476px">
-		<a href="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/arch.png" data-size="1347x678"><img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/arch.png"
-				srcset="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/arch_hu1762af8c9bc1f7e576d0306d5a062d8a_275461_480x0_resize_box_3.png 480w, /p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/arch_hu1762af8c9bc1f7e576d0306d5a062d8a_275461_1024x0_resize_box_3.png 1024w"
-				width="1347"
-				height="678"
-				loading="lazy"
-				alt="架构">
-		</a>
-		
-		<figcaption>架构</figcaption>
-		
-	</figure></p>
+<figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 198; 
+			flex-basis: 476px"
+	>
+	<a href="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/arch.png" data-size="1347x678">
+		<img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/arch.png"
+			width="1347"
+			height="678"
+			srcset="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/arch_hu1762af8c9bc1f7e576d0306d5a062d8a_275461_480x0_resize_box_3.png 480w, /p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/arch_hu1762af8c9bc1f7e576d0306d5a062d8a_275461_1024x0_resize_box_3.png 1024w"
+			loading="lazy"
+			alt="架构">
+	</a>
+	
+	<figcaption>架构</figcaption>
+	
+</figure></p>
 <h3 id="方案选型">方案选型</h3>
 <p>存储引擎开源方案主要包括Hudi,Iceberg,Delta三大产品。</p>
 <table>
@@ -555,12 +562,37 @@ parquet文件一旦写入HDFS文件，要想改数据，就只能全量重新写
     
 </article>
 
+    
+
     <aside class="related-contents--wrapper">
     
     
         <h2 class="section-title">Related contents</h2>
         <div class="related-contents">
             <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/hardware_monitor.0afb938fee3d45955dcc45ce112f7279_hu29c20fb19d2aaa59a3207076dda60f90_49933_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post node_exporter在k8s集群的部署方案"
+                        
+                        data-hash="md5-CvuTj&#43;49RZVdzEXOES9yeQ==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">node_exporter在k8s集群的部署方案</h2>
+        </div>
+    </a>
+</article>
                 
                     
 <article class="has-image">
@@ -571,8 +603,9 @@ parquet文件一旦写入HDFS文件，要想改数据，就只能全量重新写
                 <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post 部署策略及容器化实现"
+                        
                         data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
                 
             </div>
@@ -593,8 +626,9 @@ parquet文件一旦写入HDFS文件，要想改数据，就只能全量重新写
                 <img src="/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python.8c8d3f1f65e352e0ecafd279a08eb0c1_hu670cf3820e5abe15cd8fd5f6cf0ba20e_87306_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post ubuntu升级python版本正确姿势"
+                        
                         data-hash="md5-jI0/H2XjUuDsr9J5oI6wwQ==">
                 
             </div>
@@ -615,8 +649,9 @@ parquet文件一旦写入HDFS文件，要想改数据，就只能全量重新写
                 <img src="/p/%E6%B5%85%E8%B0%88chatops/chatops.047fdca1683487486942824c5121858c_hu2af93606f657e048f3b8c35cecf8603a_39849_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post 浅谈ChatOps"
+                        
                         data-hash="md5-BH/coWg0h0hpQoJMUSGFjA==">
                 
             </div>
@@ -637,8 +672,9 @@ parquet文件一旦写入HDFS文件，要想改数据，就只能全量重新写
                 <img src="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/paddle.f9980b85e5d47359ccd6cefec98ae32a_hu5438825b9b6d1014226d20d231e650c2_191045_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post Paddle飞桨部署方案"
+                        
                         data-hash="md5-&#43;ZgLheXUc1nM1s7&#43;yYrjKg==">
                 
             </div>
@@ -650,35 +686,13 @@ parquet文件一旦写入HDFS文件，要想改数据，就只能全量重新写
     </a>
 </article>
                 
-                    
-<article class="has-image">
-    <a href="/p/%E9%9A%8F%E7%AC%94soul/">
-        
-        
-            <div class="article-image">
-                <img src="/p/%E9%9A%8F%E7%AC%94soul/soul.1ec3d9ceed2b95e92d1a2f57a754173e_hua5b7a4101002ac3de8aa87e6c8d8ffa6_107809_250x150_fill_q75_box_smart1.JPG" 
-                        width="250" 
-                        height="150" 
-                        loading="lazy" 
-                        data-key="" 
-                        data-hash="md5-HsPZzu0rlektGi9Xp1QXPg==">
-                
-            </div>
-        
-
-        <div class="article-details">
-            <h2 class="article-title">【随笔】Soul</h2>
-        </div>
-    </a>
-</article>
-                
             </div>
         </div>
     
 </aside>
 
      
-     
+    
         
     <script src="https://utteranc.es/client.js" 
         repo="tinohean/hugo"
@@ -730,12 +744,12 @@ parquet文件一旦写入HDFS文件，要想改数据，就只能全量重新写
         
             2017 - 
         
-        2021 半岛无风
+        2022 半岛无风
     </section>
     
     <section class="powerby">
         Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
-        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.6.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
     </section>
 </footer>
 

@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='node_exporter在k8s集群的部署方案 关于node_exporter 用途 Node exporter是Prometheus常用的一个exporter，主要用于收集内核暴露的硬件和系统级别的监控指标，比如cpu、内存、磁盘等硬件类的使用率。 在一些场景下还可以通过textfile collector特性收集自定义指标，比如无法通过现有的开源exporter收集到的定时任务指标等。
+使用限制 由于node_exporter设计的目的是监控主机系统，一些硬件指需要通过对主机的一些系统级别的目录访问获取，比如/proc、/sys等。因此，官方并不建议通过容器进行部署。
+ The node_exporter is designed to monitor the host system. It&amp;rsquo;s not recommended to deploy it as a Docker container because it requires access to the host system.
+ 受限于生产环境和历史遗留原因，总有一些场景需要外部prometheus监控容器集群的node。在这种情况下，node_exporter通过DaemonSet的形式部署在容器集群的每个node中，独立于外部prometheus集群而存在，必须进行额外的权限配置和宿主机目录挂载。
+本文即对此类使用场景的部署方案说明。
+版本说明  node_exporter: v1.3.1 helm: v3.0.0  部署方案 监控指标整理 作为一个硬件指标exporter, node_exporter默认暴露的指标相当之多，所有指标统计下来上千行，这样就带来了几个问题：
+ 并不是所有监控指标都是我们需要的。 过多的指标监控给系统带来不必要的资源消耗。  因此，我们需要根据自己的业务监控需求，最小化暴露监控指标。
+以下是一些常用的metrics：
+# 节点存活时间 node_time_seconds node_boot_time_seconds up # 磁盘I/O node_disk_read_bytes_total node_disk_written_bytes_total # 文件系统 node_filesystem_size_bytes node_filesystem_free_bytes node_filesystem_files node_filesystem_files_free # cpu 负载 node_cpu_seconds_total node_load1 node_load5 # 网络I/O node_netstat_Tcp_CurrEstab node_network_receive_bytes_total node_network_transmit_bytes_total node_public_network_receive_bandwidth node_public_network_transmit_bandwidth # 内存 node_memory_MemTotal_bytes node_memory_MemFree_bytes node_memory_Buffers_bytes node_memory_Cached_bytes # text collector collector 据官方文档中说明，默认开启的collector包括arp、bonding、cpu等，而每个collector暴露的metrics并无详细文档说明。那么，如何获取collector对应的metrics明细呢？'><title>node_exporter在k8s集群的部署方案</title>
+
+<link rel='canonical' href='http://tinohean.top/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/'>
+
+<link rel="stylesheet" href="/scss/style.min.55acd6a4f6bb8d5e834a61b3655f322dc64db5391905e41e2a612548fb36a6ff.css"><meta property='og:title' content='node_exporter在k8s集群的部署方案'>
+<meta property='og:description' content='node_exporter在k8s集群的部署方案 关于node_exporter 用途 Node exporter是Prometheus常用的一个exporter，主要用于收集内核暴露的硬件和系统级别的监控指标，比如cpu、内存、磁盘等硬件类的使用率。 在一些场景下还可以通过textfile collector特性收集自定义指标，比如无法通过现有的开源exporter收集到的定时任务指标等。
+使用限制 由于node_exporter设计的目的是监控主机系统，一些硬件指需要通过对主机的一些系统级别的目录访问获取，比如/proc、/sys等。因此，官方并不建议通过容器进行部署。
+ The node_exporter is designed to monitor the host system. It&amp;rsquo;s not recommended to deploy it as a Docker container because it requires access to the host system.
+ 受限于生产环境和历史遗留原因，总有一些场景需要外部prometheus监控容器集群的node。在这种情况下，node_exporter通过DaemonSet的形式部署在容器集群的每个node中，独立于外部prometheus集群而存在，必须进行额外的权限配置和宿主机目录挂载。
+本文即对此类使用场景的部署方案说明。
+版本说明  node_exporter: v1.3.1 helm: v3.0.0  部署方案 监控指标整理 作为一个硬件指标exporter, node_exporter默认暴露的指标相当之多，所有指标统计下来上千行，这样就带来了几个问题：
+ 并不是所有监控指标都是我们需要的。 过多的指标监控给系统带来不必要的资源消耗。  因此，我们需要根据自己的业务监控需求，最小化暴露监控指标。
+以下是一些常用的metrics：
+# 节点存活时间 node_time_seconds node_boot_time_seconds up # 磁盘I/O node_disk_read_bytes_total node_disk_written_bytes_total # 文件系统 node_filesystem_size_bytes node_filesystem_free_bytes node_filesystem_files node_filesystem_files_free # cpu 负载 node_cpu_seconds_total node_load1 node_load5 # 网络I/O node_netstat_Tcp_CurrEstab node_network_receive_bytes_total node_network_transmit_bytes_total node_public_network_receive_bandwidth node_public_network_transmit_bandwidth # 内存 node_memory_MemTotal_bytes node_memory_MemFree_bytes node_memory_Buffers_bytes node_memory_Cached_bytes # text collector collector 据官方文档中说明，默认开启的collector包括arp、bonding、cpu等，而每个collector暴露的metrics并无详细文档说明。那么，如何获取collector对应的metrics明细呢？'>
+<meta property='og:url' content='http://tinohean.top/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='prometheus' /><meta property='article:tag' content='node_exporter' /><meta property='article:tag' content='监控' /><meta property='article:published_time' content='2022-02-25T10:42:45&#43;08:00'/><meta property='article:modified_time' content='2022-02-25T10:42:45&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/hardware_monitor.png' />
+<meta name="twitter:title" content="node_exporter在k8s集群的部署方案">
+<meta name="twitter:description" content="node_exporter在k8s集群的部署方案 关于node_exporter 用途 Node exporter是Prometheus常用的一个exporter，主要用于收集内核暴露的硬件和系统级别的监控指标，比如cpu、内存、磁盘等硬件类的使用率。 在一些场景下还可以通过textfile collector特性收集自定义指标，比如无法通过现有的开源exporter收集到的定时任务指标等。
+使用限制 由于node_exporter设计的目的是监控主机系统，一些硬件指需要通过对主机的一些系统级别的目录访问获取，比如/proc、/sys等。因此，官方并不建议通过容器进行部署。
+ The node_exporter is designed to monitor the host system. It&amp;rsquo;s not recommended to deploy it as a Docker container because it requires access to the host system.
+ 受限于生产环境和历史遗留原因，总有一些场景需要外部prometheus监控容器集群的node。在这种情况下，node_exporter通过DaemonSet的形式部署在容器集群的每个node中，独立于外部prometheus集群而存在，必须进行额外的权限配置和宿主机目录挂载。
+本文即对此类使用场景的部署方案说明。
+版本说明  node_exporter: v1.3.1 helm: v3.0.0  部署方案 监控指标整理 作为一个硬件指标exporter, node_exporter默认暴露的指标相当之多，所有指标统计下来上千行，这样就带来了几个问题：
+ 并不是所有监控指标都是我们需要的。 过多的指标监控给系统带来不必要的资源消耗。  因此，我们需要根据自己的业务监控需求，最小化暴露监控指标。
+以下是一些常用的metrics：
+# 节点存活时间 node_time_seconds node_boot_time_seconds up # 磁盘I/O node_disk_read_bytes_total node_disk_written_bytes_total # 文件系统 node_filesystem_size_bytes node_filesystem_free_bytes node_filesystem_files node_filesystem_files_free # cpu 负载 node_cpu_seconds_total node_load1 node_load5 # 网络I/O node_netstat_Tcp_CurrEstab node_network_receive_bytes_total node_network_transmit_bytes_total node_public_network_receive_bandwidth node_public_network_transmit_bandwidth # 内存 node_memory_MemTotal_bytes node_memory_MemFree_bytes node_memory_Buffers_bytes node_memory_Cached_bytes # text collector collector 据官方文档中说明，默认开启的collector包括arp、bonding、cpu等，而每个collector暴露的metrics并无详细文档说明。那么，如何获取collector对应的metrics明细呢？"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/hardware_monitor.png' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KZ420DZ0LK"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-KZ420DZ0LK', { 'anonymize_ip': false });
+}
+</script>
+
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="/" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>Back</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+                <img src="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/hardware_monitor_hu29c20fb19d2aaa59a3207076dda60f90_49933_800x0_resize_box_3.png"
+                        srcset="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/hardware_monitor_hu29c20fb19d2aaa59a3207076dda60f90_49933_800x0_resize_box_3.png 800w, /p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/hardware_monitor_hu29c20fb19d2aaa59a3207076dda60f90_49933_1600x0_resize_box_3.png 1600w"
+                        width="800" 
+                        height="376" 
+                        loading="lazy"
+                        alt="Featured image of post node_exporter在k8s集群的部署方案" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">node_exporter在k8s集群的部署方案</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Feb 25, 2022</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    3 minute read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h1 id="node_exporter在k8s集群的部署方案">node_exporter在k8s集群的部署方案</h1>
+<h2 id="关于node_exporter">关于node_exporter</h2>
+<h3 id="用途">用途</h3>
+<p>Node exporter是Prometheus常用的一个exporter，主要用于收集内核暴露的硬件和系统级别的监控指标，比如cpu、内存、磁盘等硬件类的使用率。
+在一些场景下还可以通过textfile collector特性收集自定义指标，比如无法通过现有的开源exporter收集到的定时任务指标等。</p>
+<h3 id="使用限制">使用限制</h3>
+<p>由于node_exporter设计的目的是监控主机系统，一些硬件指需要通过对主机的一些系统级别的目录访问获取，比如/proc、/sys等。因此，官方并不建议通过容器进行部署。</p>
+<blockquote>
+<p>The <code>node_exporter</code> is designed to monitor the host system. It&rsquo;s not recommended to deploy it as a Docker container because it requires access to the host system.</p>
+</blockquote>
+<p>受限于生产环境和历史遗留原因，总有一些场景需要外部prometheus监控容器集群的node。在这种情况下，node_exporter通过DaemonSet的形式部署在容器集群的每个node中，独立于外部prometheus集群而存在，必须进行额外的权限配置和宿主机目录挂载。</p>
+<p>本文即对此类使用场景的部署方案说明。</p>
+<h3 id="版本说明">版本说明</h3>
+<ul>
+<li>node_exporter: v1.3.1</li>
+<li>helm: v3.0.0</li>
+</ul>
+<h2 id="部署方案">部署方案</h2>
+<h3 id="监控指标整理">监控指标整理</h3>
+<p>作为一个硬件指标exporter, node_exporter默认暴露的指标相当之多，所有指标统计下来上千行，这样就带来了几个问题：</p>
+<ol>
+<li>并不是所有监控指标都是我们需要的。</li>
+<li>过多的指标监控给系统带来不必要的资源消耗。</li>
+</ol>
+<p>因此，我们需要根据自己的业务监控需求，最小化暴露监控指标。</p>
+<p>以下是一些常用的metrics：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="c1"># 节点存活时间</span>
+node_time_seconds
+node_boot_time_seconds
+up
+<span class="c1"># 磁盘I/O</span>
+node_disk_read_bytes_total
+node_disk_written_bytes_total
+<span class="c1"># 文件系统</span>
+node_filesystem_size_bytes
+node_filesystem_free_bytes
+node_filesystem_files
+node_filesystem_files_free
+<span class="c1"># cpu 负载</span>
+node_cpu_seconds_total
+node_load1
+node_load5
+<span class="c1"># 网络I/O</span>
+node_netstat_Tcp_CurrEstab
+node_network_receive_bytes_total
+node_network_transmit_bytes_total
+node_public_network_receive_bandwidth
+node_public_network_transmit_bandwidth
+<span class="c1"># 内存</span>
+node_memory_MemTotal_bytes
+node_memory_MemFree_bytes
+node_memory_Buffers_bytes
+node_memory_Cached_bytes
+<span class="c1"># text collector</span>
+</code></pre></div><h4 id="collector">collector</h4>
+<p>据<a class="link" href="https://github.com/prometheus/node_exporter"  target="_blank" rel="noopener"
+    >官方文档</a>中说明，默认开启的collector包括arp、bonding、cpu等，而每个collector暴露的metrics并无详细文档说明。那么，如何获取collector对应的metrics明细呢？</p>
+<p>首先，node_exporter有一个配置项，可以关闭所有默认开启的collector</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">- --collector.disable-defaults
+</code></pre></div><p>然后，官方文档列出的collector列表中，根据collector的名称可以得知它的作用范围及适用系统， 通过描述可以得到一些大概范围的collector。</p>
+<table>
+<thead>
+<tr>
+<th>collector name</th>
+<th>description</th>
+<th>OS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cpu</td>
+<td>Exposes CPU statistics</td>
+<td>Darwin, Dragonfly, FreeBSD, Linux, Solaris, OpenBSD</td>
+</tr>
+<tr>
+<td>filesystem</td>
+<td>Exposes filesystem statistics, such as disk space used.</td>
+<td>Darwin, Dragonfly, FreeBSD, Linux, OpenBSD</td>
+</tr>
+<tr>
+<td>netdev</td>
+<td>Exposes network interface statistics such as bytes transferred.</td>
+<td>Darwin, Dragonfly, FreeBSD, Linux, OpenBSD</td>
+</tr>
+<tr>
+<td>textfile</td>
+<td>Exposes statistics read from local disk. The <code>--collector.textfile.directory</code> flag must be set.</td>
+<td><em>any</em></td>
+</tr>
+<tr>
+<td>time</td>
+<td>Exposes the current system time.</td>
+<td><em>any</em></td>
+</tr>
+<tr>
+<td>stat</td>
+<td>Exposes various statistics from <code>/proc/stat</code>. This includes boot time, forks and interrupts.</td>
+<td>Linux</td>
+</tr>
+</tbody>
+</table>
+<p>最后配合<code>--collector.disable-defaults</code>参数进行一一排查，就能得到一个比较完整的映射关系了。</p>
+<h3 id="配置整理">配置整理</h3>
+<h4 id="node_exporter">node_exporter</h4>
+<p>通过梳理监控指标对应的collector,我们可以获取一个最初的精简化配置，只收集需要的监控指标</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">  - --collector.disable-defaults
+  - --collector.stat
+  - --collector.diskstats 
+  - --collector.filefd
+  - --collector.filesystem
+  - --collector.loadavg 
+  - --collector.cpu
+  - --collector.netdev
+  - --collector.netstat
+  - --collector.netclass
+  - --collector.meminfo
+</code></pre></div><p>除此之外，还需要一些基本的配置目录，用于指定proc和sys及root的挂载点。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">  - --path.procfs<span class="o">=</span><span class="s2">&#34;/proc&#34;</span>
+  - --path.sysfs<span class="o">=</span><span class="s2">&#34;/sys&#34;</span>
+  - --path.rootfs<span class="o">=</span><span class="s2">&#34;/&#34;</span>
+</code></pre></div><p>有自定义指标需求的，需要额外配置text collector</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">  - --collector.textfile
+  - --collector.textfile.directory<span class="o">=</span><span class="s2">&#34;</span><span class="nv">$TEXTFILE_DIR</span><span class="s2">&#34;</span>  
+</code></pre></div><p>对于node_exporter本身的指标，也可以完全剔除</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">  - --web.disable-exporter-metrics
+</code></pre></div><p>由于容器化其本身的实现机制，宿主机会多出很多挂载目录和虚拟网卡，我们可以通过filter配置过滤掉没意义的设备指标, 只保留宿主机本身的硬件设备。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">- --collector.filesystem.fs-types-exclude<span class="o">=</span><span class="s2">&#34;^(autofs|binfmt_misc|bpf|cgroup|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|udev|systemd-1|lxcfs|sunrpc|tmpfs|shm)</span>$<span class="s2">&#34;</span> 
+
+- --collector.filesystem.mount-points-exclude<span class="o">=</span><span class="s2">&#34;^/(sys|dev|etc|proc|run/containerd/.+)(</span>$<span class="s2">|/)&#34;</span>
+
+- --collector.netdev.device-include<span class="o">=</span><span class="s2">&#34;^(eth)\\d+</span>$<span class="s2">&#34;</span>
+</code></pre></div><p>以上操作，可以获取完整的配置清单。</p>
+<h4 id="kubernetes">kubernetes</h4>
+<p>上文已经提及，node_exporter在容器内运行需要挂载宿主机的一些目录来获取硬件信息，因此需要配置PodSecurityPolicy，并创建SA绑定相关clusterrole。</p>
+<p>如果使用私有镜像源，记得Serviceaccount配置密钥。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nn">---</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">policy/v1beta1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">PodSecurityPolicy</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter-prometheus-node-exporter</span><span class="w">
+</span><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">monitor</span><span class="w">
+</span><span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w">     
+</span><span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus-node-exporter</span><span class="w">
+</span><span class="w">    </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter</span><span class="w">
+</span><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">privileged</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">  </span><span class="c"># Allow core volume types.</span><span class="w">
+</span><span class="w">  </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span>- <span class="s1">&#39;configMap&#39;</span><span class="w">
+</span><span class="w">    </span>- <span class="s1">&#39;emptyDir&#39;</span><span class="w">
+</span><span class="w">    </span>- <span class="s1">&#39;projected&#39;</span><span class="w">
+</span><span class="w">    </span>- <span class="s1">&#39;secret&#39;</span><span class="w">
+</span><span class="w">    </span>- <span class="s1">&#39;downwardAPI&#39;</span><span class="w">
+</span><span class="w">    </span>- <span class="s1">&#39;persistentVolumeClaim&#39;</span><span class="w">
+</span><span class="w">    </span>- <span class="s1">&#39;hostPath&#39;</span><span class="w">
+</span><span class="w">  </span><span class="nt">hostNetwork</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">  </span><span class="nt">hostIPC</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">  </span><span class="nt">hostPID</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">  </span><span class="nt">hostPorts</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span>- <span class="nt">min</span><span class="p">:</span><span class="w"> </span><span class="m">0</span><span class="w">
+</span><span class="w">      </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="m">65535</span><span class="w">
+</span><span class="w">  </span><span class="nt">runAsUser</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="c"># Permits the container to run with root privileges as well.</span><span class="w">
+</span><span class="w">    </span><span class="nt">rule</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;RunAsAny&#39;</span><span class="w">
+</span><span class="w">  </span><span class="nt">seLinux</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="c"># This policy assumes the nodes are using AppArmor rather than SELinux.</span><span class="w">
+</span><span class="w">    </span><span class="nt">rule</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;RunAsAny&#39;</span><span class="w">
+</span><span class="w">  </span><span class="nt">supplementalGroups</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">rule</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;MustRunAs&#39;</span><span class="w">
+</span><span class="w">    </span><span class="nt">ranges</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="c"># Allow adding the root group.</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">min</span><span class="p">:</span><span class="w"> </span><span class="m">0</span><span class="w">
+</span><span class="w">        </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="m">65535</span><span class="w">
+</span><span class="w">  </span><span class="nt">fsGroup</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">rule</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;MustRunAs&#39;</span><span class="w">
+</span><span class="w">    </span><span class="nt">ranges</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="c"># Allow adding the root group.</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">min</span><span class="p">:</span><span class="w"> </span><span class="m">0</span><span class="w">
+</span><span class="w">        </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="m">65535</span><span class="w">
+</span><span class="w">  </span><span class="nt">readOnlyRootFilesystem</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w"></span><span class="nn">---</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ServiceAccount</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter-prometheus-node-exporter</span><span class="w">
+</span><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">monitor</span><span class="w">
+</span><span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus-node-exporter</span><span class="w">
+</span><span class="w">    </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;node-exporter&#34;</span><span class="w">
+</span><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span>{}<span class="w">
+</span><span class="w"></span><span class="nt">imagePullSecrets</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">yourregistrykey</span><span class="w">
+</span><span class="w"></span><span class="nn">---</span><span class="w">
+</span><span class="w"></span><span class="c"># Source: prometheus-node-exporter/templates/psp-clusterrole.yaml</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ClusterRole</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">rbac.authorization.k8s.io/v1</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">psp-node-exporter-prometheus-node-exporter</span><span class="w">
+</span><span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w">     
+</span><span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus-node-exporter</span><span class="w">
+</span><span class="w">    </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter</span><span class="w">
+</span><span class="w"></span><span class="nt">rules</span><span class="p">:</span><span class="w">
+</span><span class="w"></span>- <span class="nt">apiGroups</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;extensions&#39;</span><span class="p">]</span><span class="w">
+</span><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;podsecuritypolicies&#39;</span><span class="p">]</span><span class="w">
+</span><span class="w">  </span><span class="nt">verbs</span><span class="p">:</span><span class="w">     </span><span class="p">[</span><span class="s1">&#39;use&#39;</span><span class="p">]</span><span class="w">
+</span><span class="w">  </span><span class="nt">resourceNames</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="l">node-exporter-prometheus-node-exporter</span><span class="w">
+</span><span class="w"></span><span class="nn">---</span><span class="w">
+</span><span class="w"></span><span class="c"># Source: prometheus-node-exporter/templates/psp-clusterrolebinding.yaml</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">rbac.authorization.k8s.io/v1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ClusterRoleBinding</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">psp-node-exporter-prometheus-node-exporter</span><span class="w">
+</span><span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w">     
+</span><span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus-node-exporter</span><span class="w">
+</span><span class="w">    </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter</span><span class="w">
+</span><span class="w"></span><span class="nt">roleRef</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">apiGroup</span><span class="p">:</span><span class="w"> </span><span class="l">rbac.authorization.k8s.io</span><span class="w">
+</span><span class="w">  </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ClusterRole</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">psp-node-exporter-prometheus-node-exporter</span><span class="w">
+</span><span class="w"></span><span class="nt">subjects</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ServiceAccount</span><span class="w">
+</span><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter-prometheus-node-exporter</span><span class="w">
+</span><span class="w">    </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">monitor</span><span class="w">
+</span></code></pre></div><p>然后创建Service，用于暴露node_exporter。使用DaemonSet部署node_exporter到每个node上, 记得挂载相关hostpath到容器中。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nn">---</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Service</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter-prometheus-node-exporter</span><span class="w">
+</span><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">monitor</span><span class="w">
+</span><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">prometheus.io/scrape</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;true&#34;</span><span class="w">
+</span><span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w">     
+</span><span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus-node-exporter</span><span class="w">
+</span><span class="w">    </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter</span><span class="w">
+</span><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">ClusterIP</span><span class="w">
+</span><span class="w">  </span><span class="nt">ports</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span>- <span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">9100</span><span class="w">
+</span><span class="w">      </span><span class="nt">targetPort</span><span class="p">:</span><span class="w"> </span><span class="m">9100</span><span class="w">
+</span><span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l">TCP</span><span class="w">
+</span><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">metrics</span><span class="w">
+</span><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus-node-exporter</span><span class="w">
+</span><span class="w">    </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter</span><span class="w">
+</span><span class="w"></span><span class="nn">---</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">apps/v1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">DaemonSet</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter-prometheus-node-exporter</span><span class="w">
+</span><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">monitor</span><span class="w">
+</span><span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w">     
+</span><span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus-node-exporter</span><span class="w">
+</span><span class="w">    </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter</span><span class="w">
+</span><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus-node-exporter</span><span class="w">
+</span><span class="w">      </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter</span><span class="w">
+</span><span class="w">  </span><span class="nt">updateStrategy</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">rollingUpdate</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="w">
+</span><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">RollingUpdate</span><span class="w">
+</span><span class="w">  </span><span class="nt">template</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w">         
+</span><span class="w">        </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus-node-exporter</span><span class="w">
+</span><span class="w">        </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter</span><span class="w">
+</span><span class="w">      </span><span class="nt">annotations</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">cluster-autoscaler.kubernetes.io/safe-to-evict</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;true&#34;</span><span class="w">
+</span><span class="w">    </span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">automountServiceAccountToken</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span><span class="w">      </span><span class="nt">serviceAccountName</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter-prometheus-node-exporter</span><span class="w">
+</span><span class="w">      </span><span class="nt">securityContext</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="nt">fsGroup</span><span class="p">:</span><span class="w"> </span><span class="m">65534</span><span class="w">
+</span><span class="w">        </span><span class="nt">runAsGroup</span><span class="p">:</span><span class="w"> </span><span class="m">65534</span><span class="w">
+</span><span class="w">        </span><span class="nt">runAsNonRoot</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">        </span><span class="nt">runAsUser</span><span class="p">:</span><span class="w"> </span><span class="m">65534</span><span class="w">
+</span><span class="w">      </span><span class="nt">containers</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">node-exporter</span><span class="w">
+</span><span class="w">          </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">$PRIVATE_IMAGE_REPO/node-exporter:v1.3.1</span><span class="w">
+</span><span class="w">          </span><span class="nt">imagePullPolicy</span><span class="p">:</span><span class="w"> </span><span class="l">IfNotPresent</span><span class="w">
+</span><span class="w">          </span><span class="nt">args</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">path.procfs=/host/proc</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">path.sysfs=/host/sys</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">path.rootfs=/host/root</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">web.listen-address=$(HOST_IP):9100</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">web.disable-exporter-metrics</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.disable-defaults</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.stat</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.time</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.diskstats</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.filefd</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.netdev</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.filesystem</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.loadavg</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.cpu</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.meminfo</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.tcpstat</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.textfile</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.textfile.directory=$TEXTFILE_DIR</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.filesystem.fs-types-exclude=&#34;^(autofs|binfmt_misc|bpf|cgroup|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|udev|systemd-1|lxcfs|sunrpc|tmpfs|shm)$&#34;</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.filesystem.mount-points-exclude=&#34;^/(sys|dev|etc|proc|run/containerd/.+)($|/)&#34;</span><span class="w">
+</span><span class="w">            </span>- --<span class="l">collector.netdev.device-include=&#34;^(eth)\\d+$&#34;</span><span class="w">
+</span><span class="w">          </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span><span class="w">          </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">HOST_IP</span><span class="w">
+</span><span class="w">            </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="m">0.0.0.0</span><span class="w">
+</span><span class="w">          </span><span class="nt">ports</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">metrics</span><span class="w">
+</span><span class="w">              </span><span class="nt">containerPort</span><span class="p">:</span><span class="w"> </span><span class="m">9100</span><span class="w">
+</span><span class="w">              </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l">TCP</span><span class="w">
+</span><span class="w">          </span><span class="nt">livenessProbe</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span><span class="w">
+</span><span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">/</span><span class="w">
+</span><span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">9100</span><span class="w">
+</span><span class="w">          </span><span class="nt">readinessProbe</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span><span class="w">
+</span><span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">/</span><span class="w">
+</span><span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">9100</span><span class="w">
+</span><span class="w">          </span><span class="nt">resources</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span>{}<span class="w">
+</span><span class="w">          </span><span class="nt">volumeMounts</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">proc</span><span class="w">
+</span><span class="w">              </span><span class="nt">mountPath</span><span class="p">:</span><span class="w"> </span><span class="l">/host/proc</span><span class="w">
+</span><span class="w">              </span><span class="nt">readOnly</span><span class="p">:</span><span class="w">  </span><span class="kc">true</span><span class="w">
+</span><span class="w">            </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">sys</span><span class="w">
+</span><span class="w">              </span><span class="nt">mountPath</span><span class="p">:</span><span class="w"> </span><span class="l">/host/sys</span><span class="w">
+</span><span class="w">              </span><span class="nt">readOnly</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">            </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">root</span><span class="w">
+</span><span class="w">              </span><span class="nt">mountPath</span><span class="p">:</span><span class="w"> </span><span class="l">/host/root</span><span class="w">
+</span><span class="w">              </span><span class="nt">mountPropagation</span><span class="p">:</span><span class="w"> </span><span class="l">HostToContainer</span><span class="w">
+</span><span class="w">              </span><span class="nt">readOnly</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">      </span><span class="nt">hostNetwork</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">      </span><span class="nt">hostPID</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">      </span><span class="nt">tolerations</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span>- <span class="nt">effect</span><span class="p">:</span><span class="w"> </span><span class="l">NoSchedule</span><span class="w">
+</span><span class="w">          </span><span class="nt">operator</span><span class="p">:</span><span class="w"> </span><span class="l">Exists</span><span class="w">
+</span><span class="w">      </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">proc</span><span class="w">
+</span><span class="w">          </span><span class="nt">hostPath</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">/proc</span><span class="w">
+</span><span class="w">        </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">sys</span><span class="w">
+</span><span class="w">          </span><span class="nt">hostPath</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">/sys</span><span class="w">
+</span><span class="w">        </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">root</span><span class="w">
+</span><span class="w">          </span><span class="nt">hostPath</span><span class="p">:</span><span class="w">
+</span><span class="w">            </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">/</span><span class="w">
+</span></code></pre></div><h3 id="helm部署">Helm部署</h3>
+<p>使用Helm可以极大地简化我们的部署环节，我们可以使用prometheus社区开源的<a class="link" href="https://github.com/prometheus-community/helm-charts"  target="_blank" rel="noopener"
+    >chart</a>进行部署。</p>
+<p>对于一些自定义的参数，修改values.yaml进行定制, 根据上文所述的配置即可，此处不再赘述。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">helm install node-exporter --namespace monitor ./prometheus-node-exporter
+</code></pre></div><h3 id="prometheus配置">Prometheus配置</h3>
+<p>k8s内部的promtheus相对来说简单一些, 只需要在scape config下配置pod内挂载的ca和token即可。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="w">  </span>- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;kubernetes-nodes&#34;</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="c"># Default to scraping over https. If required, just disable this or change to</span><span class="w">
+</span><span class="w">    </span><span class="c"># `http`.</span><span class="w">
+</span><span class="w">    </span><span class="nt">scheme</span><span class="p">:</span><span class="w"> </span><span class="l">https</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="c"># This TLS &amp; authorization config is used to connect to the actual scrape</span><span class="w">
+</span><span class="w">    </span><span class="c"># endpoints for cluster components. This is separate to discovery auth</span><span class="w">
+</span><span class="w">    </span><span class="c"># configuration because discovery &amp; scraping are two separate concerns in</span><span class="w">
+</span><span class="w">    </span><span class="c"># Prometheus. The discovery auth config is automatic if Prometheus runs inside</span><span class="w">
+</span><span class="w">    </span><span class="c"># the cluster. Otherwise, more config options have to be provided within the</span><span class="w">
+</span><span class="w">    </span><span class="c"># &lt;kubernetes_sd_config&gt;.</span><span class="w">
+</span><span class="w">    </span><span class="nt">tls_config</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">ca_file</span><span class="p">:</span><span class="w"> </span><span class="l">/var/run/secrets/kubernetes.io/serviceaccount/ca.crt</span><span class="w">
+</span><span class="w">      </span><span class="c"># If your node certificates are self-signed or use a different CA to the</span><span class="w">
+</span><span class="w">      </span><span class="c"># master CA, then disable certificate verification below. Note that</span><span class="w">
+</span><span class="w">      </span><span class="c"># certificate verification is an integral part of a secure infrastructure</span><span class="w">
+</span><span class="w">      </span><span class="c"># so this should only be disabled in a controlled environment. You can</span><span class="w">
+</span><span class="w">      </span><span class="c"># disable certificate verification by uncommenting the line below.</span><span class="w">
+</span><span class="w">      </span><span class="c">#</span><span class="w">
+</span><span class="w">      </span><span class="c"># insecure_skip_verify: true</span><span class="w">
+</span><span class="w">    </span><span class="nt">authorization</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="nt">credentials_file</span><span class="p">:</span><span class="w"> </span><span class="l">/var/run/secrets/kubernetes.io/serviceaccount/token</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">kubernetes_sd_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l">node</span><span class="w">
+</span><span class="w">
+</span><span class="w">    </span><span class="nt">relabel_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span>- <span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">labelmap</span><span class="w">
+</span><span class="w">        </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="l">__meta_kubernetes_node_label_(.+)</span><span class="w">
+</span></code></pre></div><p>而对于外部prometheus集群来说，需要进行额外的配置，以获取k8s api的访问验证。<br>
+由于prometheus处于k8s集群外部，无法自动获取ca证书和token，因此，除了在scape config下配置ca和token外（用于数据scrape），kubernetes_sd_config下也需要同样的配置(用于实现discovery)。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="w">  </span>- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;kubernetes-web&#39;</span><span class="w">
+</span><span class="w">    </span><span class="nt">scheme</span><span class="p">:</span><span class="w"> </span><span class="l">https</span><span class="w">
+</span><span class="w">    </span><span class="nt">kubernetes_sd_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span>- <span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l">node</span><span class="w">
+</span><span class="w">      </span><span class="nt">api_server</span><span class="p">:</span><span class="w"> </span><span class="l">https://$YOUR_API_SERVER</span><span class="w">
+</span><span class="w">      </span><span class="c"># 配置token，用于实现discovery</span><span class="w">
+</span><span class="w">      </span><span class="nt">bearer_token_file</span><span class="p">:</span><span class="w"> </span><span class="l">ssl/token</span><span class="w">
+</span><span class="w">      </span><span class="nt">tls_config</span><span class="p">:</span><span class="w">
+</span><span class="w">        </span><span class="c"># 跳过访问证书验证,用于实现discovery</span><span class="w">
+</span><span class="w">        </span><span class="nt">insecure_skip_verify</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> 
+</span><span class="w">    </span><span class="c"># 配置token</span><span class="w">
+</span><span class="w">    </span><span class="nt">bearer_token_file</span><span class="p">:</span><span class="w"> </span><span class="l">ssl/token</span><span class="w">
+</span><span class="w">    </span><span class="nt">tls_config</span><span class="p">:</span><span class="w">
+</span><span class="w">      </span><span class="c"># 跳过访问证书验证</span><span class="w">
+</span><span class="w">      </span><span class="nt">insecure_skip_verify</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="w">    </span><span class="nt">relabel_configs</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span>- <span class="nt">source_labels</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">__meta_kubernetes_node_address_InternalIP]</span><span class="w">
+</span><span class="w">      </span><span class="nt">target_label</span><span class="p">:</span><span class="w"> </span><span class="l">__address__</span><span class="w">
+</span><span class="w">      </span><span class="nt">replacement</span><span class="p">:</span><span class="w"> </span><span class="l">${1}:9100</span><span class="w">
+</span><span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">replace</span><span class="w">
+</span><span class="w">    </span>- <span class="nt">target_label</span><span class="p">:</span><span class="w"> </span><span class="l">__scheme__</span><span class="w">
+</span><span class="w">      </span><span class="nt">replacement</span><span class="p">:</span><span class="w"> </span><span class="l">http</span><span class="w">
+</span><span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">replace</span><span class="w">
+</span></code></pre></div><p>token的内容需要根据sa获取,注意进行base64解密。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl get secrets -n monitor node-exporter-prometheus-node-exporter-token-t4b2s -o <span class="nv">jsonpath</span><span class="o">={</span>.data.token<span class="o">}</span> <span class="p">|</span>base64 -d &gt;token
+</code></pre></div><h2 id="已知问题">已知问题</h2>
+<ol>
+<li>
+<p>大部分collector过滤器失效</p>
+<p><a class="link" href="https://github.com/prometheus/node_exporter/issues/2241"  target="_blank" rel="noopener"
+    >https://github.com/prometheus/node_exporter/issues/2241</a></p>
+</li>
+<li>
+<p>自身指标剔除不完整</p>
+<p><a class="link" href="https://github.com/prometheus/node_exporter/issues/2265"  target="_blank" rel="noopener"
+    >https://github.com/prometheus/node_exporter/issues/2265</a></p>
+</li>
+</ol>
+<h2 id="参考文档">参考文档</h2>
+<ol>
+<li><a class="link" href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config"  target="_blank" rel="noopener"
+    >https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config</a></li>
+<li><a class="link" href="https://github.com/prometheus-community/helm-charts"  target="_blank" rel="noopener"
+    >https://github.com/prometheus-community/helm-charts</a></li>
+<li><a class="link" href="https://github.com/prometheus/node_exporter"  target="_blank" rel="noopener"
+    >https://github.com/prometheus/node_exporter</a></li>
+<li><a class="link" href="https://cloud.tencent.com/developer/article/1659552"  target="_blank" rel="noopener"
+    >https://cloud.tencent.com/developer/article/1659552</a></li>
+<li><a class="link" href="https://github.com/prometheus/prometheus/blob/release-2.33/documentation/examples/prometheus-kubernetes.yml"  target="_blank" rel="noopener"
+    >https://github.com/prometheus/prometheus/blob/release-2.33/documentation/examples/prometheus-kubernetes.yml</a></li>
+</ol>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/prometheus/">prometheus</a>
+        
+            <a href="/tags/node_exporter/">node_exporter</a>
+        
+            <a href="/tags/%E7%9B%91%E6%8E%A7/">监控</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/">
+        
+        
+            <div class="article-image">
+                <img src="/p/prometheus%E5%B8%B8%E7%94%A8exporter%E5%8F%8A%E5%91%8A%E8%AD%A6%E8%A7%84%E5%88%99/prometheus.e68ccd07f88822501da63f6d6434fab2_hu29c20fb19d2aaa59a3207076dda60f90_67350_250x150_fill_q75_box_smart1.jpg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post Prometheus常用Exporter及告警规则"
+                        
+                        data-hash="md5-5ozNB/iIIlAdpj9tZDT6sg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Prometheus常用Exporter及告警规则</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-druid%E7%AF%87/druid.3b5517783c33e2846a518ccc6b30887b_hu29d20a37b17955b30e24040a85cde0bd_50267_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post 监控方案-druid篇"
+                        
+                        data-hash="md5-O1UXeDwz4oRqUYzMazCIew==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">监控方案-druid篇</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88-kafka%E7%AF%87/grafana.3b7da84effaa3ef57cd738d7d45d03b0_hud6a20f3436e4696f01e55623167f1a17_283099_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post 监控方案-kafka篇"
+                        
+                        data-hash="md5-O32oTv&#43;qPvV81zjX1F0DsA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">监控方案-kafka篇</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/lake.b7b25110b382cae3afb4e59ab416fe18_hu4a54f6cc00d4e0599bb1fb51fbd2eda0_63589_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post 数据湖及其相关概念性调研"
+                        
+                        data-hash="md5-t7JRELOCyuOvtOWatBb&#43;GA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">数据湖及其相关概念性调研</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post 部署策略及容器化实现"
+                        
+                        data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">部署策略及容器化实现</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+    
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2022 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.6.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">Table of contents</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#关于node_exporter">关于node_exporter</a>
+      <ol>
+        <li><a href="#用途">用途</a></li>
+        <li><a href="#使用限制">使用限制</a></li>
+        <li><a href="#版本说明">版本说明</a></li>
+      </ol>
+    </li>
+    <li><a href="#部署方案">部署方案</a>
+      <ol>
+        <li><a href="#监控指标整理">监控指标整理</a>
+          <ol>
+            <li><a href="#collector">collector</a></li>
+          </ol>
+        </li>
+        <li><a href="#配置整理">配置整理</a>
+          <ol>
+            <li><a href="#node_exporter">node_exporter</a></li>
+            <li><a href="#kubernetes">kubernetes</a></li>
+          </ol>
+        </li>
+        <li><a href="#helm部署">Helm部署</a></li>
+        <li><a href="#prometheus配置">Prometheus配置</a></li>
+      </ol>
+    </li>
+    <li><a href="#已知问题">已知问题</a></li>
+    <li><a href="#参考文档">参考文档</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

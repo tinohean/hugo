@@ -21,7 +21,7 @@ EXEC模式 主进程就是&amp;lt;process&amp;gt;,所以不经过shell默认的�
 
 <link rel='canonical' href='http://tinohean.top/p/cmd%E5%92%8Centrypoint%E7%9A%84%E9%85%8D%E7%BD%AE%E6%AF%94%E5%AF%B9%E8%AF%A6%E8%A7%A3/'>
 
-<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='CMD和ENTRYPOINT的配置比对详解'>
+<link rel="stylesheet" href="/scss/style.min.55acd6a4f6bb8d5e834a61b3655f322dc64db5391905e41e2a612548fb36a6ff.css"><meta property='og:title' content='CMD和ENTRYPOINT的配置比对详解'>
 <meta property='og:description' content='CMD和ENTRYPOINT的配置比对详解 概述 Dockerfile的语法包括CMD和Entrypoint两种格式都可以配置用于容器内主进程的启动，两者的语义并不是很合适。新上手很容易搞不清楚两者之间的区别和关系，在不同的配置搭配下会产生怎样的运行效果也没有一个条理清晰的思路。
 同样的，k8s也有一套类似的配置语法：command和args。那么k8s的语法中两者又是怎样的搭配关系，它们跟docker语法又是怎样的映射关系呢？
 本文将进行详情分析。
@@ -107,7 +107,7 @@ if (!doNotTrack) {
 ">
     
         <div id="article-toolbar">
-            <a href="http://tinohean.top" class="back-home">
+            <a href="/" class="back-home">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
   <path stroke="none" d="M0 0h24v24H0z"/>
   <polyline points="15 6 9 12 15 18" />
@@ -180,7 +180,7 @@ if (!doNotTrack) {
 
 
                 <time class="article-time--reading">
-                    2 min read
+                    2 minute read
                 </time>
             </div>
         
@@ -413,6 +413,8 @@ if (!doNotTrack) {
     
 </article>
 
+    
+
     <aside class="related-contents--wrapper">
     
     
@@ -429,8 +431,9 @@ if (!doNotTrack) {
                 <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post 部署策略及容器化实现"
+                        
                         data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
                 
             </div>
@@ -451,8 +454,9 @@ if (!doNotTrack) {
                 <img src="/p/%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E5%8C%96%E6%94%B9%E9%80%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E5%8F%8A%E6%A8%A1%E5%BC%8F/container.f6e588456d243f6b3691eae8fbb21613_hued08ec2480e5693b7d58c33103917ef1_43947_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post 应用容器化改造的设计原则及模式"
+                        
                         data-hash="md5-9uWIRW0kP2s2kero&#43;7IWEw==">
                 
             </div>
@@ -473,8 +477,9 @@ if (!doNotTrack) {
                 <img src="/p/kubeadm%E9%83%A8%E7%BD%B2kubernetes%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4/kubernetes.2eb79f17c6a735a5fe774ce6e26a1c69_hub6bed6b994a2e4811d8630d5db2ab610_722818_250x150_fill_box_smart1_3.png" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post Kubeadm部署kubernetes高可用集群"
+                        
                         data-hash="md5-LrefF8anNaX&#43;d0zm4mocaQ==">
                 
             </div>
@@ -495,8 +500,9 @@ if (!doNotTrack) {
                 <img src="/p/%E5%AE%B9%E5%99%A8%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5/best-practice.8a2848ee547b34ca67a942d58d4488ff_hu39150d17f5c9712007ceb66088b02be0_125186_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post 容器最佳实践"
+                        
                         data-hash="md5-iihI7lR7NMpnqULVjUSI/w==">
                 
             </div>
@@ -510,22 +516,23 @@ if (!doNotTrack) {
                 
                     
 <article class="has-image">
-    <a href="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/">
+    <a href="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
         
         
             <div class="article-image">
-                <img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/lake.b7b25110b382cae3afb4e59ab416fe18_hu4a54f6cc00d4e0599bb1fb51fbd2eda0_63589_250x150_fill_q75_box_smart1.jpeg" 
+                <img src="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/hardware_monitor.0afb938fee3d45955dcc45ce112f7279_hu29c20fb19d2aaa59a3207076dda60f90_49933_250x150_fill_box_smart1_3.png" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
-                        data-hash="md5-t7JRELOCyuOvtOWatBb&#43;GA==">
+                        loading="lazy"
+                        alt="Featured image of post node_exporter在k8s集群的部署方案"
+                        
+                        data-hash="md5-CvuTj&#43;49RZVdzEXOES9yeQ==">
                 
             </div>
         
 
         <div class="article-details">
-            <h2 class="article-title">数据湖及其相关概念性调研</h2>
+            <h2 class="article-title">node_exporter在k8s集群的部署方案</h2>
         </div>
     </a>
 </article>
@@ -536,7 +543,7 @@ if (!doNotTrack) {
 </aside>
 
      
-     
+    
         
     <script src="https://utteranc.es/client.js" 
         repo="tinohean/hugo"
@@ -588,12 +595,12 @@ if (!doNotTrack) {
         
             2017 - 
         
-        2021 半岛无风
+        2022 半岛无风
     </section>
     
     <section class="powerby">
         Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
-        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.6.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
     </section>
 </footer>
 

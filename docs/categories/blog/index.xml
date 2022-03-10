@@ -6,7 +6,24 @@
     <description>Recent content in 文字 on 半岛无风</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 15 Oct 2021 13:36:46 +0800</lastBuildDate><atom:link href="http://tinohean.top/categories/blog/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 25 Feb 2022 10:42:45 +0800</lastBuildDate><atom:link href="http://tinohean.top/categories/blog/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>node_exporter在k8s集群的部署方案</title>
+      <link>http://tinohean.top/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</link>
+      <pubDate>Fri, 25 Feb 2022 10:42:45 +0800</pubDate>
+      
+      <guid>http://tinohean.top/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</guid>
+      <description>node_exporter在k8s集群的部署方案 关于node_exporter 用途 Node exporter是Prometheus常用的一个exporter，主要用于收集内核暴露的硬件和系统级别的监控指标，比如cpu、内存、磁盘等硬件类的使用率。 在一些场景下还可以通过textfile collector特性收集自定义指标，比如无法通过现有的开源exporter收集到的定时任务指标等。
+使用限制 由于node_exporter设计的目的是监控主机系统，一些硬件指需要通过对主机的一些系统级别的目录访问获取，比如/proc、/sys等。因此，官方并不建议通过容器进行部署。
+ The node_exporter is designed to monitor the host system. It&amp;rsquo;s not recommended to deploy it as a Docker container because it requires access to the host system.
+ 受限于生产环境和历史遗留原因，总有一些场景需要外部prometheus监控容器集群的node。在这种情况下，node_exporter通过DaemonSet的形式部署在容器集群的每个node中，独立于外部prometheus集群而存在，必须进行额外的权限配置和宿主机目录挂载。
+本文即对此类使用场景的部署方案说明。
+版本说明  node_exporter: v1.3.1 helm: v3.0.0  部署方案 监控指标整理 作为一个硬件指标exporter, node_exporter默认暴露的指标相当之多，所有指标统计下来上千行，这样就带来了几个问题：
+ 并不是所有监控指标都是我们需要的。 过多的指标监控给系统带来不必要的资源消耗。  因此，我们需要根据自己的业务监控需求，最小化暴露监控指标。
+以下是一些常用的metrics：
+# 节点存活时间 node_time_seconds node_boot_time_seconds up # 磁盘I/O node_disk_read_bytes_total node_disk_written_bytes_total # 文件系统 node_filesystem_size_bytes node_filesystem_free_bytes node_filesystem_files node_filesystem_files_free # cpu 负载 node_cpu_seconds_total node_load1 node_load5 # 网络I/O node_netstat_Tcp_CurrEstab node_network_receive_bytes_total node_network_transmit_bytes_total node_public_network_receive_bandwidth node_public_network_transmit_bandwidth # 内存 node_memory_MemTotal_bytes node_memory_MemFree_bytes node_memory_Buffers_bytes node_memory_Cached_bytes # text collector collector 据官方文档中说明，默认开启的collector包括arp、bonding、cpu等，而每个collector暴露的metrics并无详细文档说明。那么，如何获取collector对应的metrics明细呢？</description>
+    </item>
+    
     <item>
       <title>数据湖及其相关概念性调研</title>
       <link>http://tinohean.top/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/</link>

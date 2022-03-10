@@ -31,7 +31,7 @@ Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查
 
 <link rel='canonical' href='http://tinohean.top/p/%E6%B5%85%E8%B0%88chatops/'>
 
-<link rel="stylesheet" href="/scss/style.min.css"><meta property='og:title' content='浅谈ChatOps'>
+<link rel="stylesheet" href="/scss/style.min.55acd6a4f6bb8d5e834a61b3655f322dc64db5391905e41e2a612548fb36a6ff.css"><meta property='og:title' content='浅谈ChatOps'>
 <meta property='og:description' content='浅谈ChatOps 背景 本文源自我在技术团队的一次分享。 八月的时候我调研了下ChatOps概念，并通过钉钉机器人成功落地。
 至于当时为什么要做ChatOps呢，主要是因为实力不足（不懂算法，监控数据量有限），无法推进AIOps进行运维平台的迭代升级。而ChatOps作为一个新兴的概念（其实也不新了），也属于智能运维的范畴，在国内还没有什么很红的应用方案。
 其次是当时出现了一些日常操作的痛点，比如某次研发小伙伴在午饭前上了一次线，午饭期间出现重大故障，只能捧着饭碗从食堂火速跑回工位回滚处理，再比如临睡前懒得去登陆监控页面的我想看下当前负载较大的服务器状况&amp;hellip;
@@ -137,7 +137,7 @@ if (!doNotTrack) {
 ">
     
         <div id="article-toolbar">
-            <a href="http://tinohean.top" class="back-home">
+            <a href="/" class="back-home">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
   <path stroke="none" d="M0 0h24v24H0z"/>
   <polyline points="15 6 9 12 15 18" />
@@ -210,7 +210,7 @@ if (!doNotTrack) {
 
 
                 <time class="article-time--reading">
-                    1 min read
+                    1 minute read
                 </time>
             </div>
         
@@ -255,112 +255,168 @@ if (!doNotTrack) {
 <p>第四个呢，就是我们经常需要做的，硬件信息查询，比如服务器外网IP，硬件配置，比登陆CMDB查询方便多了。</p>
 <p>&hellip;</p>
 <h3 id="架构">架构</h3>
-<p><figure style="flex-grow: 245; flex-basis: 589px">
-		<a href="/p/%E6%B5%85%E8%B0%88chatops/arch.jpg" data-size="2572x1048"><img src="/p/%E6%B5%85%E8%B0%88chatops/arch.jpg"
-				srcset="/p/%E6%B5%85%E8%B0%88chatops/arch_hu3759b242a349f1696964c87e34156d2e_167758_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/arch_hu3759b242a349f1696964c87e34156d2e_167758_1024x0_resize_q75_box.jpg 1024w"
-				width="2572"
-				height="1048"
-				loading="lazy"
-				alt="ChatOps系统架构">
-		</a>
-		
-		<figcaption>ChatOps系统架构</figcaption>
-		
-	</figure>
+<p><figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 245; 
+			flex-basis: 589px"
+	>
+	<a href="/p/%E6%B5%85%E8%B0%88chatops/arch.jpg" data-size="2572x1048">
+		<img src="/p/%E6%B5%85%E8%B0%88chatops/arch.jpg"
+			width="2572"
+			height="1048"
+			srcset="/p/%E6%B5%85%E8%B0%88chatops/arch_hu3759b242a349f1696964c87e34156d2e_167758_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/arch_hu3759b242a349f1696964c87e34156d2e_167758_1024x0_resize_q75_box.jpg 1024w"
+			loading="lazy"
+			alt="ChatOps系统架构">
+	</a>
+	
+	<figcaption>ChatOps系统架构</figcaption>
+	
+</figure>
 一个完整的ChatOps落地包括这四个层面的架构，有人（不限于运维，研发，甚至可以是运营），有聊天平台（比如国内的钉钉，微信），有机器人（比如github的hubot），有支持机器人操作的基础设施，包括服务器，脚本，后端服务等等。</p>
 <p>后端服务作为ChatOps的主要开发对象，暂时没有很契合的开源方案，需要开发者自己开发相关逻辑。</p>
 <h3 id="等级演变">等级演变</h3>
 <p>下面分析下ChatOps的演变路线。
-<figure style="flex-grow: 185; flex-basis: 446px">
-		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv0.jpg" data-size="3168x1704"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv0.jpg"
-				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv0_hu8db856b81e95e4263262ebe5f0453b7d_277371_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv0_hu8db856b81e95e4263262ebe5f0453b7d_277371_1024x0_resize_q75_box.jpg 1024w"
-				width="3168"
-				height="1704"
-				loading="lazy"
-				alt="before ChatOps">
-		</a>
-		
-		<figcaption>before ChatOps</figcaption>
-		
-	</figure></p>
+<figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 185; 
+			flex-basis: 446px"
+	>
+	<a href="/p/%E6%B5%85%E8%B0%88chatops/lv0.jpg" data-size="3168x1704">
+		<img src="/p/%E6%B5%85%E8%B0%88chatops/lv0.jpg"
+			width="3168"
+			height="1704"
+			srcset="/p/%E6%B5%85%E8%B0%88chatops/lv0_hu8db856b81e95e4263262ebe5f0453b7d_277371_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv0_hu8db856b81e95e4263262ebe5f0453b7d_277371_1024x0_resize_q75_box.jpg 1024w"
+			loading="lazy"
+			alt="before ChatOps">
+	</a>
+	
+	<figcaption>before ChatOps</figcaption>
+	
+</figure></p>
 <p>在ChatOps之前，运维是直接对接监控系统的，没有聊天软件来进行信息同步。同时，告警处理和事件处理等运维操作都是基于Ad-hoc命令，通过shell客户端进行的。
-<figure style="flex-grow: 178; flex-basis: 428px">
-		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv1.jpg" data-size="500x280"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv1.jpg"
-				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv1_hu4ca1c8cd216ff639f465812c8a18201e_33544_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv1_hu4ca1c8cd216ff639f465812c8a18201e_33544_1024x0_resize_q75_box.jpg 1024w"
-				width="500"
-				height="280"
-				loading="lazy"
-				alt="lv1">
-		</a>
-		
-		<figcaption>lv1</figcaption>
-		
-	</figure><br>
+<figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 178; 
+			flex-basis: 428px"
+	>
+	<a href="/p/%E6%B5%85%E8%B0%88chatops/lv1.jpg" data-size="500x280">
+		<img src="/p/%E6%B5%85%E8%B0%88chatops/lv1.jpg"
+			width="500"
+			height="280"
+			srcset="/p/%E6%B5%85%E8%B0%88chatops/lv1_hu4ca1c8cd216ff639f465812c8a18201e_33544_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv1_hu4ca1c8cd216ff639f465812c8a18201e_33544_1024x0_resize_q75_box.jpg 1024w"
+			loading="lazy"
+			alt="lv1">
+	</a>
+	
+	<figcaption>lv1</figcaption>
+	
+</figure><br>
 到了Level1后呢，我们会针对告警创建不同的讨论群，比如某应用触发告警了，运维在群里通知开发进行处理。在这个层级，事件的发送者还是人。
-<figure style="flex-grow: 177; flex-basis: 427px">
-		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv2a.jpg" data-size="500x281"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv2a.jpg"
-				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv2a_hu084f3b19299c372e75c6bf2d8266f616_37367_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv2a_hu084f3b19299c372e75c6bf2d8266f616_37367_1024x0_resize_q75_box.jpg 1024w"
-				width="500"
-				height="281"
-				loading="lazy"
-				alt="lv2a">
-		</a>
-		
-		<figcaption>lv2a</figcaption>
-		
-	</figure><br>
+<figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 177; 
+			flex-basis: 427px"
+	>
+	<a href="/p/%E6%B5%85%E8%B0%88chatops/lv2a.jpg" data-size="500x281">
+		<img src="/p/%E6%B5%85%E8%B0%88chatops/lv2a.jpg"
+			width="500"
+			height="281"
+			srcset="/p/%E6%B5%85%E8%B0%88chatops/lv2a_hu084f3b19299c372e75c6bf2d8266f616_37367_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv2a_hu084f3b19299c372e75c6bf2d8266f616_37367_1024x0_resize_q75_box.jpg 1024w"
+			loading="lazy"
+			alt="lv2a">
+	</a>
+	
+	<figcaption>lv2a</figcaption>
+	
+</figure><br>
 Level 2A后，我们已经可以把这些告警信息、事件详情等进行分类通知，比如硬件类告警专门发到一个群，应用类告警发到另一个群。这时候，事件的发送者变成了监控系统，然后还支持事件恢复通知。
-<figure style="flex-grow: 177; flex-basis: 427px">
-		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv2b.jpg" data-size="500x281"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv2b.jpg"
-				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv2b_hue8e82f0552d30e57dda4fa00ec412d76_36775_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv2b_hue8e82f0552d30e57dda4fa00ec412d76_36775_1024x0_resize_q75_box.jpg 1024w"
-				width="500"
-				height="281"
-				loading="lazy"
-				alt="lv2b">
-		</a>
-		
-		<figcaption>lv2b</figcaption>
-		
-	</figure><br>
+<figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 177; 
+			flex-basis: 427px"
+	>
+	<a href="/p/%E6%B5%85%E8%B0%88chatops/lv2b.jpg" data-size="500x281">
+		<img src="/p/%E6%B5%85%E8%B0%88chatops/lv2b.jpg"
+			width="500"
+			height="281"
+			srcset="/p/%E6%B5%85%E8%B0%88chatops/lv2b_hue8e82f0552d30e57dda4fa00ec412d76_36775_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv2b_hue8e82f0552d30e57dda4fa00ec412d76_36775_1024x0_resize_q75_box.jpg 1024w"
+			loading="lazy"
+			alt="lv2b">
+	</a>
+	
+	<figcaption>lv2b</figcaption>
+	
+</figure><br>
 Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查询CMDB获取硬件信息，工单系统啊，监控指标啊等信息。此时信息更加丰富了。
-<figure style="flex-grow: 177; flex-basis: 425px">
-		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv3.jpg" data-size="500x282"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv3.jpg"
-				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv3_hu6f32d5eae2d5a8024dd3bd998b74ff56_38041_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv3_hu6f32d5eae2d5a8024dd3bd998b74ff56_38041_1024x0_resize_q75_box.jpg 1024w"
-				width="500"
-				height="282"
-				loading="lazy"
-				alt="lv3">
-		</a>
-		
-		<figcaption>lv3</figcaption>
-		
-	</figure><br>
+<figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 177; 
+			flex-basis: 425px"
+	>
+	<a href="/p/%E6%B5%85%E8%B0%88chatops/lv3.jpg" data-size="500x282">
+		<img src="/p/%E6%B5%85%E8%B0%88chatops/lv3.jpg"
+			width="500"
+			height="282"
+			srcset="/p/%E6%B5%85%E8%B0%88chatops/lv3_hu6f32d5eae2d5a8024dd3bd998b74ff56_38041_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv3_hu6f32d5eae2d5a8024dd3bd998b74ff56_38041_1024x0_resize_q75_box.jpg 1024w"
+			loading="lazy"
+			alt="lv3">
+	</a>
+	
+	<figcaption>lv3</figcaption>
+	
+</figure><br>
 到了level3后就是全自动化的交互。比如可以更新工单，事件状态，发出指令并查看执行结果。最重要的是我们能通过聊天工具跟监控系统等内部系统进行交互。
-<figure style="flex-grow: 176; flex-basis: 424px">
-		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv4.jpg" data-size="500x283"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv4.jpg"
-				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv4_hu37bc8434d08197c307a6b96dcace7756_42159_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv4_hu37bc8434d08197c307a6b96dcace7756_42159_1024x0_resize_q75_box.jpg 1024w"
-				width="500"
-				height="283"
-				loading="lazy"
-				alt="lv4">
-		</a>
-		
-		<figcaption>lv4</figcaption>
-		
-	</figure><br>
+<figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 176; 
+			flex-basis: 424px"
+	>
+	<a href="/p/%E6%B5%85%E8%B0%88chatops/lv4.jpg" data-size="500x283">
+		<img src="/p/%E6%B5%85%E8%B0%88chatops/lv4.jpg"
+			width="500"
+			height="283"
+			srcset="/p/%E6%B5%85%E8%B0%88chatops/lv4_hu37bc8434d08197c307a6b96dcace7756_42159_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv4_hu37bc8434d08197c307a6b96dcace7756_42159_1024x0_resize_q75_box.jpg 1024w"
+			loading="lazy"
+			alt="lv4">
+	</a>
+	
+	<figcaption>lv4</figcaption>
+	
+</figure><br>
 到了level4后，交互的中间人变成了机器人，机器人可以把对话转发到工单系统中，然后监控关键字并发送更新信息，更新知识库，总之就是交互更加智能。
-<figure style="flex-grow: 179; flex-basis: 430px">
-		<a href="/p/%E6%B5%85%E8%B0%88chatops/lv5.jpg" data-size="500x279"><img src="/p/%E6%B5%85%E8%B0%88chatops/lv5.jpg"
-				srcset="/p/%E6%B5%85%E8%B0%88chatops/lv5_huda46efb471259f5b70bee8ec4320ecab_40177_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv5_huda46efb471259f5b70bee8ec4320ecab_40177_1024x0_resize_q75_box.jpg 1024w"
-				width="500"
-				height="279"
-				loading="lazy"
-				alt="lv5">
-		</a>
-		
-		<figcaption>lv5</figcaption>
-		
-	</figure><br>
+<figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 179; 
+			flex-basis: 430px"
+	>
+	<a href="/p/%E6%B5%85%E8%B0%88chatops/lv5.jpg" data-size="500x279">
+		<img src="/p/%E6%B5%85%E8%B0%88chatops/lv5.jpg"
+			width="500"
+			height="279"
+			srcset="/p/%E6%B5%85%E8%B0%88chatops/lv5_huda46efb471259f5b70bee8ec4320ecab_40177_480x0_resize_q75_box.jpg 480w, /p/%E6%B5%85%E8%B0%88chatops/lv5_huda46efb471259f5b70bee8ec4320ecab_40177_1024x0_resize_q75_box.jpg 1024w"
+			loading="lazy"
+			alt="lv5">
+	</a>
+	
+	<figcaption>lv5</figcaption>
+	
+</figure><br>
 到了level5后。机器人演变成人工智能了，对于自然语言的理解有很大的提高，并可以根据知识库和历史记录推荐具体的解决方案了。此时可以认为达到了AIOps的层级了。</p>
 <h2 id="方案选型">方案选型</h2>
 <p>当今市面上开源机器人主要包括这三家</p>
@@ -481,12 +537,37 @@ Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查
     
 </article>
 
+    
+
     <aside class="related-contents--wrapper">
     
     
         <h2 class="section-title">Related contents</h2>
         <div class="related-contents">
             <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/hardware_monitor.0afb938fee3d45955dcc45ce112f7279_hu29c20fb19d2aaa59a3207076dda60f90_49933_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post node_exporter在k8s集群的部署方案"
+                        
+                        data-hash="md5-CvuTj&#43;49RZVdzEXOES9yeQ==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">node_exporter在k8s集群的部署方案</h2>
+        </div>
+    </a>
+</article>
                 
                     
 <article class="has-image">
@@ -497,8 +578,9 @@ Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查
                 <img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/lake.b7b25110b382cae3afb4e59ab416fe18_hu4a54f6cc00d4e0599bb1fb51fbd2eda0_63589_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post 数据湖及其相关概念性调研"
+                        
                         data-hash="md5-t7JRELOCyuOvtOWatBb&#43;GA==">
                 
             </div>
@@ -519,8 +601,9 @@ Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查
                 <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post 部署策略及容器化实现"
+                        
                         data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
                 
             </div>
@@ -541,8 +624,9 @@ Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查
                 <img src="/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python.8c8d3f1f65e352e0ecafd279a08eb0c1_hu670cf3820e5abe15cd8fd5f6cf0ba20e_87306_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post ubuntu升级python版本正确姿势"
+                        
                         data-hash="md5-jI0/H2XjUuDsr9J5oI6wwQ==">
                 
             </div>
@@ -563,8 +647,9 @@ Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查
                 <img src="/p/paddle%E9%A3%9E%E6%A1%A8%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/paddle.f9980b85e5d47359ccd6cefec98ae32a_hu5438825b9b6d1014226d20d231e650c2_191045_250x150_fill_q75_box_smart1.jpeg" 
                         width="250" 
                         height="150" 
-                        loading="lazy" 
-                        data-key="" 
+                        loading="lazy"
+                        alt="Featured image of post Paddle飞桨部署方案"
+                        
                         data-hash="md5-&#43;ZgLheXUc1nM1s7&#43;yYrjKg==">
                 
             </div>
@@ -576,35 +661,13 @@ Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查
     </a>
 </article>
                 
-                    
-<article class="has-image">
-    <a href="/p/%E9%9A%8F%E7%AC%94soul/">
-        
-        
-            <div class="article-image">
-                <img src="/p/%E9%9A%8F%E7%AC%94soul/soul.1ec3d9ceed2b95e92d1a2f57a754173e_hua5b7a4101002ac3de8aa87e6c8d8ffa6_107809_250x150_fill_q75_box_smart1.JPG" 
-                        width="250" 
-                        height="150" 
-                        loading="lazy" 
-                        data-key="" 
-                        data-hash="md5-HsPZzu0rlektGi9Xp1QXPg==">
-                
-            </div>
-        
-
-        <div class="article-details">
-            <h2 class="article-title">【随笔】Soul</h2>
-        </div>
-    </a>
-</article>
-                
             </div>
         </div>
     
 </aside>
 
      
-     
+    
         
     <script src="https://utteranc.es/client.js" 
         repo="tinohean/hugo"
@@ -656,12 +719,12 @@ Level 2B支持从监控系统中拉取数据发送到聊天平台了，比如查
         
             2017 - 
         
-        2021 半岛无风
+        2022 半岛无风
     </section>
     
     <section class="powerby">
         Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
-        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.1.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.6.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
     </section>
 </footer>
 
