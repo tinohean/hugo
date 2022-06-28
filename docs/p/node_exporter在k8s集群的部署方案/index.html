@@ -521,7 +521,7 @@ node_memory_Cached_bytes
 <p>对于一些自定义的参数，修改values.yaml进行定制, 根据上文所述的配置即可，此处不再赘述。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">helm install node-exporter --namespace monitor ./prometheus-node-exporter
 </code></pre></div><h3 id="prometheus配置">Prometheus配置</h3>
-<p>k8s内部的promtheus相对来说简单一些, 只需要在scape config下配置pod内挂载的ca和token即可。</p>
+<p>k8s内部的prometheus相对来说简单一些, 只需要在scape config下配置pod内挂载的ca和token即可。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="w">  </span>- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;kubernetes-nodes&#34;</span><span class="w">
 </span><span class="w">
 </span><span class="w">    </span><span class="c"># Default to scraping over https. If required, just disable this or change to</span><span class="w">
@@ -553,7 +553,49 @@ node_memory_Cached_bytes
 </span><span class="w">      </span>- <span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">labelmap</span><span class="w">
 </span><span class="w">        </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="l">__meta_kubernetes_node_label_(.+)</span><span class="w">
 </span></code></pre></div><p>而对于外部prometheus集群来说，需要进行额外的配置，以获取k8s api的访问验证。<br>
-由于prometheus处于k8s集群外部，无法自动获取ca证书和token，因此，除了在scape config下配置ca和token外（用于数据scrape），kubernetes_sd_config下也需要同样的配置(用于实现discovery)。</p>
+首先，我们需要创建SA，并绑定对应的可查询nodes等权限的clusterrole,以便于实现自动发现。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="c"># prom.rbac.yaml</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ServiceAccount</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus</span><span class="w">
+</span><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">monitor</span><span class="w">
+</span><span class="w"></span><span class="nn">---</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">rbac.authorization.k8s.io/v1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ClusterRole</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus</span><span class="w">
+</span><span class="w"></span><span class="nt">rules</span><span class="p">:</span><span class="w">
+</span><span class="w"></span>- <span class="nt">apiGroups</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;&#34;</span><span class="p">]</span><span class="w">
+</span><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="l">nodes</span><span class="w">
+</span><span class="w">  </span>- <span class="l">services</span><span class="w">
+</span><span class="w">  </span>- <span class="l">endpoints</span><span class="w">
+</span><span class="w">  </span>- <span class="l">pods</span><span class="w">
+</span><span class="w">  </span><span class="nt">verbs</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;get&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;list&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;watch&#34;</span><span class="p">]</span><span class="w">
+</span><span class="w"></span>- <span class="nt">apiGroups</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;&#34;</span><span class="p">]</span><span class="w">
+</span><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span>- <span class="l">configmaps</span><span class="w">
+</span><span class="w">  </span><span class="nt">verbs</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;get&#34;</span><span class="p">]</span><span class="w">
+</span><span class="w"></span>- <span class="nt">nonResourceURLs</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;/metrics&#34;</span><span class="p">]</span><span class="w">
+</span><span class="w">  </span><span class="nt">verbs</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;get&#34;</span><span class="p">]</span><span class="w">
+</span><span class="w"></span><span class="nn">---</span><span class="w">
+</span><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">rbac.authorization.k8s.io/v1beta1</span><span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ClusterRoleBinding</span><span class="w">
+</span><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus</span><span class="w">
+</span><span class="w"></span><span class="nt">roleRef</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">apiGroup</span><span class="p">:</span><span class="w"> </span><span class="l">rbac.authorization.k8s.io</span><span class="w">
+</span><span class="w">  </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ClusterRole</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus</span><span class="w">
+</span><span class="w"></span><span class="nt">subjects</span><span class="p">:</span><span class="w">
+</span><span class="w"></span>- <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ServiceAccount</span><span class="w">
+</span><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus</span><span class="w">
+</span><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">monitor</span><span class="w">
+</span></code></pre></div><p>由于prometheus处于k8s集群外部，无法自动获取ca证书和token，因此，除了在scape config下配置token外（用于数据scrape），kubernetes_sd_config下也需要同样的配置(用于实现discovery)。
+此处的token即上述创建的名为prometheus的SA挂载的token,可以通过命令行获取：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl get secrets -n monitor prometheus-token-l6jt7 -o <span class="nv">jsonpath</span><span class="o">={</span>.data.token<span class="o">}</span> <span class="p">|</span>base64 -d &gt; token
+</code></pre></div><p>将token配置在prometheus中</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="w">  </span>- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;kubernetes-web&#39;</span><span class="w">
 </span><span class="w">    </span><span class="nt">scheme</span><span class="p">:</span><span class="w"> </span><span class="l">https</span><span class="w">
 </span><span class="w">    </span><span class="nt">kubernetes_sd_configs</span><span class="p">:</span><span class="w">
@@ -577,9 +619,7 @@ node_memory_Cached_bytes
 </span><span class="w">    </span>- <span class="nt">target_label</span><span class="p">:</span><span class="w"> </span><span class="l">__scheme__</span><span class="w">
 </span><span class="w">      </span><span class="nt">replacement</span><span class="p">:</span><span class="w"> </span><span class="l">http</span><span class="w">
 </span><span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">replace</span><span class="w">
-</span></code></pre></div><p>token的内容需要根据sa获取,注意进行base64解密。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl get secrets -n monitor node-exporter-prometheus-node-exporter-token-t4b2s -o <span class="nv">jsonpath</span><span class="o">={</span>.data.token<span class="o">}</span> <span class="p">|</span>base64 -d &gt;token
-</code></pre></div><h2 id="已知问题">已知问题</h2>
+</span></code></pre></div><h2 id="已知问题">已知问题</h2>
 <ol>
 <li>
 <p>大部分collector过滤器失效</p>
