@@ -6,7 +6,17 @@
         <description>Recent content on 半岛无风</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en-us</language>
-        <lastBuildDate>Fri, 25 Feb 2022 10:42:45 +0800</lastBuildDate><atom:link href="http://tinohean.top/index.xml" rel="self" type="application/rss+xml" /><item>
+        <lastBuildDate>Sat, 13 Aug 2022 11:59:22 +0800</lastBuildDate><atom:link href="http://tinohean.top/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>【随笔】骑行日记-1</title>
+        <link>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%AA%91%E8%A1%8C%E6%97%A5%E8%AE%B0-1/</link>
+        <pubDate>Sat, 13 Aug 2022 11:59:22 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%AA%91%E8%A1%8C%E6%97%A5%E8%AE%B0-1/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%AA%91%E8%A1%8C%E6%97%A5%E8%AE%B0-1/riding.jpg" alt="Featured image of post 【随笔】骑行日记-1" /&gt;自从摆脱了噩梦般的九号线，生活舒适感确实提升了不少。不过，上海的非机动车道路况一言难尽。
+满1000公里了，总结一下上海非机动车道十侠客(纯调侃，见到远离保平安)
+ 慢速并排行驶聊天的自行车情侣侠 边玩手机边摇摇晃晃骑行的手机侠 不戴头盔,前载小孩后载大人的满载侠 慢速居中行驶,挡住后面的女中侠 不看后视镜,肆意拐来拐去的弯弯侠 油门拧到底,见缝插针超车的超车侠 堵住右拐车道,霸占人行横道的霸道侠 无视交通规则,闯红灯的红灯侠 脚丫子拖在地上,不怕别车轧脚的拖地侠 满载且巨宽,速度慢,无法超车的三轮侠  </description>
+        </item>
+        <item>
         <title>node_exporter在k8s集群的部署方案</title>
         <link>http://tinohean.top/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</link>
         <pubDate>Fri, 25 Feb 2022 10:42:45 +0800</pubDate>
@@ -280,6 +290,20 @@ kube-vip 传统意义上的HA方案主要是通过keep-alived + HAProxy实现的
 kube-vip是直接通过k8s构建的static pod，也可以配置为DaemonSet实现，通过ARP或者BGP协议实现冗余。
 ARP协议下会选举出一个领导者，而BGP协议下所有节点都会广播VIP地址。优点也是显而易见的，架构简单，成本低，维护方便。
  前期准备 节点规划    主机名 角色 ip 配置 系统版本     master-1 master 172.</description>
+        </item>
+        <item>
+        <title>【随笔】失语症</title>
+        <link>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E5%A4%B1%E8%AF%AD%E7%97%87/</link>
+        <pubDate>Sat, 07 Sep 2019 21:00:00 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E5%A4%B1%E8%AF%AD%E7%97%87/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E5%A4%B1%E8%AF%AD%E7%97%87/atree.jpg" alt="Featured image of post 【随笔】失语症" /&gt;最近几年，我觉得自己像得了失语症一样，找不到词汇了。成语忘干净，经常用错顺序，脑袋瓜里都是我擦这类语气助词。比如说我今天看到了一辆很漂亮的车，磕磕绊绊地想了半天，最后只吐出一个真帅。
+我就想跟格鲁特一样，只需说I’m Groot，或者跟阿多一样，hodor来hodor去。有没有这样的词或者句子，只需要一次，就能把一切形容出来，回答一切，否定一切。只是我脑袋太乱，不想去揣摩，如果有人知道，务必告诉我。
+眼下，这棵树就是万青口中的秦皇岛那分割(另一个平行世界的我记忆的是分隔,我更喜欢分隔)世界的桥，也是王小波迎接黎明的荒岛。沿着树干，看不见的黑暗和看得见的黑暗总能碰撞出点痕迹。可惜，没有一万匹脱缰的马，也没有十万只齐鸣的喇叭，我的脑袋瓜像新生的婴儿一样。热风呼呼地吹，马路上有吵闹的轮胎和鞋，你抬头能溅到空调水。谁他娘知道为什么啊，傻子才会问为什么。
+说太多的绝对是最傻的一个。
+今年的早些时候，某官媒没有指名道姓地点名某知名民谣一哥行为不端，然后某志就像从来没有存在过一样，彻底消失了。
+我翻开网易云音乐的歌单，越来越意识到自己其实已经身处平行世界。我的歌单里竟然没有记忆中躺着的一堆东西。我记忆里的旋律在这个平行世界中无法用口哨哼出来，我试了很多次。2010年的冬天发生的事情，我居然都想不出细节。这让人心慌，这让人心慌，这让人心慌……等下，我为什么要说三次，毕竟不是什么重要的事。
+这下我又恍然大悟，原来平行世界的失语症还是存在的，所以我找不到合适的形容词。那么问题来了，怎么去形容眼下这丛闪亮的叶子？有个闪闪发光的句子突然就像神祇一般抚摸过我的额头：让月亮走向另一个月亮。至于它是属于哪个平行世界的王小波，我一概想不起来。它的意象就像今晚的雪山高出天堂，嗯，不得不说&amp;hellip;这很&amp;hellip;?&amp;hellip;帅!</description>
         </item>
         <item>
         <title>CMD和ENTRYPOINT的配置比对详解</title>
