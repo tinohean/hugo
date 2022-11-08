@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='集群需求及依赖 K8S集群需求 根据官方文档需求部署相关集群,并创建对应权限的SA
+ Kubernetes &amp;gt;= 1.9. KubeConfig, which has access to list, create, delete pods and services, configurable via ~/.kube/config. Enabled Kubernetes DNS. default service account with RBAC permissions to create, delete pods. Service account with permissions to create, edit, delete ConfigMaps.  Flink集群依赖 跟Spark类似,Flink依赖一些库/连接器,比如高可用的checkpoints需要hdfs进行存储,batch job写数据需要mysql连接器等. 相关连接器和jar包需要集成在镜像$FLINK_HOME/lib目录下
+  依赖HA架构的HDFS集群
+  Hadoop依赖,以下任选一个下载
+ https://mvnrepository.com/artifact/org.apache.flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0 https://repository.cloudera.com/artifactory/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-uber-3.1.1.7.2.9.0-173-9.0.jar  由于版本没办法灵活匹配,社区维护能力不足等原因,该jar包官方已经不在维护,详见Flink-11086
+目前官方推荐方法是设置export HADOOP_CLASSPATH=hadoop classpath环境变量,但这意味着你要集成整个hadoop目录
+  HDFS集群两个配置文件hdfs-site.xml和core-site.xml需要集成在镜像$HADOOP_CONF_DIR中
+  commons-cli-1.5.0.jar
+ https://mvnrepository.com/artifact/commons-cli/commons-cli/1.5.0      依赖mysql作为报表数据输出'><title>Flink on native Kubernetes部署方案</title>
+
+<link rel='canonical' href='http://tinohean.top/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/'>
+
+<link rel="stylesheet" href="/scss/style.min.55acd6a4f6bb8d5e834a61b3655f322dc64db5391905e41e2a612548fb36a6ff.css"><meta property='og:title' content='Flink on native Kubernetes部署方案'>
+<meta property='og:description' content='集群需求及依赖 K8S集群需求 根据官方文档需求部署相关集群,并创建对应权限的SA
+ Kubernetes &amp;gt;= 1.9. KubeConfig, which has access to list, create, delete pods and services, configurable via ~/.kube/config. Enabled Kubernetes DNS. default service account with RBAC permissions to create, delete pods. Service account with permissions to create, edit, delete ConfigMaps.  Flink集群依赖 跟Spark类似,Flink依赖一些库/连接器,比如高可用的checkpoints需要hdfs进行存储,batch job写数据需要mysql连接器等. 相关连接器和jar包需要集成在镜像$FLINK_HOME/lib目录下
+  依赖HA架构的HDFS集群
+  Hadoop依赖,以下任选一个下载
+ https://mvnrepository.com/artifact/org.apache.flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0 https://repository.cloudera.com/artifactory/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-uber-3.1.1.7.2.9.0-173-9.0.jar  由于版本没办法灵活匹配,社区维护能力不足等原因,该jar包官方已经不在维护,详见Flink-11086
+目前官方推荐方法是设置export HADOOP_CLASSPATH=hadoop classpath环境变量,但这意味着你要集成整个hadoop目录
+  HDFS集群两个配置文件hdfs-site.xml和core-site.xml需要集成在镜像$HADOOP_CONF_DIR中
+  commons-cli-1.5.0.jar
+ https://mvnrepository.com/artifact/commons-cli/commons-cli/1.5.0      依赖mysql作为报表数据输出'>
+<meta property='og:url' content='http://tinohean.top/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/'>
+<meta property='og:site_name' content='半岛无风'>
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='flink' /><meta property='article:published_time' content='2022-11-08T16:30:50&#43;08:00'/><meta property='article:modified_time' content='2022-11-08T16:30:50&#43;08:00'/><meta property='og:image' content='http://tinohean.top/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/flink.jpeg' />
+<meta name="twitter:title" content="Flink on native Kubernetes部署方案">
+<meta name="twitter:description" content="集群需求及依赖 K8S集群需求 根据官方文档需求部署相关集群,并创建对应权限的SA
+ Kubernetes &amp;gt;= 1.9. KubeConfig, which has access to list, create, delete pods and services, configurable via ~/.kube/config. Enabled Kubernetes DNS. default service account with RBAC permissions to create, delete pods. Service account with permissions to create, edit, delete ConfigMaps.  Flink集群依赖 跟Spark类似,Flink依赖一些库/连接器,比如高可用的checkpoints需要hdfs进行存储,batch job写数据需要mysql连接器等. 相关连接器和jar包需要集成在镜像$FLINK_HOME/lib目录下
+  依赖HA架构的HDFS集群
+  Hadoop依赖,以下任选一个下载
+ https://mvnrepository.com/artifact/org.apache.flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0 https://repository.cloudera.com/artifactory/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-uber-3.1.1.7.2.9.0-173-9.0.jar  由于版本没办法灵活匹配,社区维护能力不足等原因,该jar包官方已经不在维护,详见Flink-11086
+目前官方推荐方法是设置export HADOOP_CLASSPATH=hadoop classpath环境变量,但这意味着你要集成整个hadoop目录
+  HDFS集群两个配置文件hdfs-site.xml和core-site.xml需要集成在镜像$HADOOP_CONF_DIR中
+  commons-cli-1.5.0.jar
+ https://mvnrepository.com/artifact/commons-cli/commons-cli/1.5.0      依赖mysql作为报表数据输出"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='http://tinohean.top/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/flink.jpeg' />
+    <link rel="shortcut icon" href="/image/island.ico" />
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KZ420DZ0LK"></script>
+<script>
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', 'G-KZ420DZ0LK', { 'anonymize_ip': false });
+}
+</script>
+
+    </head>
+    <body class="
+    article-page has-toc
+">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex 
+    
+        extended
+    
+">
+    
+        <div id="article-toolbar">
+            <a href="/" class="back-home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <polyline points="15 6 9 12 15 18" />
+</svg>
+
+
+
+                <span>Back</span>
+            </a>
+        </div>
+    
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+                <img src="/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/flink_hufc66cf2dd326ef3cb5eeb632913b02c4_130723_800x0_resize_q75_box.jpeg"
+                        srcset="/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/flink_hufc66cf2dd326ef3cb5eeb632913b02c4_130723_800x0_resize_q75_box.jpeg 800w, /p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/flink_hufc66cf2dd326ef3cb5eeb632913b02c4_130723_1600x0_resize_q75_box.jpeg 1600w"
+                        width="800" 
+                        height="418" 
+                        loading="lazy"
+                        alt="Featured image of post Flink on native Kubernetes部署方案" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/blog/" >
+                文字
+            </a>
+        
+    </header>
+    
+
+    <h2 class="article-title">
+        <a href="/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">Flink on native Kubernetes部署方案</a>
+    </h2>
+
+    
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Nov 08, 2022</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    2 minute read
+                </time>
+            </div>
+        
+    </footer>
+    
+</div>
+</header>
+
+    <section class="article-content">
+    <h2 id="集群需求及依赖">集群需求及依赖</h2>
+<h3 id="k8s集群需求">K8S集群需求</h3>
+<p>根据官方文档需求部署相关集群,并创建对应权限的SA</p>
+<ul>
+<li>Kubernetes &gt;= 1.9.</li>
+<li>KubeConfig, which has access to list, create, delete pods and services, configurable via ~/.kube/config.</li>
+<li>Enabled Kubernetes DNS.</li>
+<li>default service account with RBAC permissions to create, delete pods.</li>
+<li>Service account with permissions to create, edit, delete ConfigMaps.</li>
+</ul>
+<h3 id="flink集群依赖">Flink集群依赖</h3>
+<p>跟Spark类似,Flink依赖一些库/连接器,比如高可用的checkpoints需要hdfs进行存储,batch job写数据需要mysql连接器等. 相关连接器和jar包需要集成在镜像$FLINK_HOME/lib目录下</p>
+<ul>
+<li>
+<p>依赖HA架构的HDFS集群</p>
+<ul>
+<li>
+<p>Hadoop依赖,以下任选一个下载</p>
+<ul>
+<li><a class="link" href="https://mvnrepository.com/artifact/org.apache.flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0"  target="_blank" rel="noopener"
+    >https://mvnrepository.com/artifact/org.apache.flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0</a></li>
+<li><a class="link" href="https://repository.cloudera.com/artifactory/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-uber-3.1.1.7.2.9.0-173-9.0.jar"  target="_blank" rel="noopener"
+    >https://repository.cloudera.com/artifactory/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-uber-3.1.1.7.2.9.0-173-9.0.jar</a></li>
+</ul>
+<p>由于版本没办法灵活匹配,社区维护能力不足等原因,该jar包官方已经不在维护,详见<a class="link" href="https://github.com/apache/flink/pull/11983"  target="_blank" rel="noopener"
+    >Flink-11086</a></p>
+<p>目前官方推荐方法是设置<code>export HADOOP_CLASSPATH=hadoop classpath</code>环境变量,但这意味着你要集成整个hadoop目录</p>
+</li>
+<li>
+<p>HDFS集群两个配置文件hdfs-site.xml和core-site.xml需要集成在镜像$HADOOP_CONF_DIR中</p>
+</li>
+<li>
+<p>commons-cli-1.5.0.jar</p>
+<ul>
+<li><a class="link" href="https://mvnrepository.com/artifact/commons-cli/commons-cli/1.5.0"  target="_blank" rel="noopener"
+    >https://mvnrepository.com/artifact/commons-cli/commons-cli/1.5.0</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>依赖mysql作为报表数据输出</p>
+<ul>
+<li>Mysql连接器
+<ul>
+<li><a class="link" href="https://mvnrepository.com/artifact/mysql/mysql-connector-java/8.0.30"  target="_blank" rel="noopener"
+    >https://mvnrepository.com/artifact/mysql/mysql-connector-java/8.0.30</a></li>
+</ul>
+</li>
+<li>JDBC连接器
+<ul>
+<li><a class="link" href="https://mvnrepository.com/artifact/org.apache.flink/flink-connector-jdbc/1.15.2"  target="_blank" rel="noopener"
+    >https://mvnrepository.com/artifact/org.apache.flink/flink-connector-jdbc/1.15.2</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>Native Kubernetes模式下,使用Application部署,只支持local模式,因此需要集成应用的jar包,并在提交任务时显示指定</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">local:///<span class="nv">$FLINK_HOME</span>/usrlib/Batch-Job.jar
+</code></pre></div></li>
+</ul>
+<h2 id="k8s集群配置">K8S集群配置</h2>
+<ol>
+<li>
+<p>创建SA并挂载镜像拉取secrets</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubectl -n flink create sa flink-sa 
+kubectl -n flink patch serviceaccount flink-sa  -p <span class="s1">&#39;{&#34;imagePullSecrets&#34;: [{&#34;name&#34;: &#34;yourregistrykey&#34;}]}&#39;</span>
+</code></pre></div></li>
+<li>
+<p>权限配置</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">kubef create rolebinding flink-role-binding --clusterrole<span class="o">=</span>edit --serviceaccount<span class="o">=</span>flink:flink-sa --namespace<span class="o">=</span>flink
+</code></pre></div></li>
+<li>
+<p>更新DNS</p>
+<p>默认挂载的configmap在kube-system:coredns下,需要更新为192.168.0.11自建DNS服务器以解析内部hostname</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
+</span><span class="w"></span><span class="nt">data</span><span class="p">:</span><span class="w">
+</span><span class="w">  </span><span class="nt">Corefile</span><span class="p">:</span><span class="w"> </span><span class="l">|2-</span><span class="w">
+</span><span class="w">        </span><span class="l">.:53 {</span><span class="w">
+</span><span class="w">            </span><span class="l">...</span><span class="w">
+</span><span class="w">            </span><span class="l">prometheus :9153</span><span class="w">
+</span><span class="w">            </span><span class="l">forward . 192.168.0.11</span><span class="w">
+</span><span class="w">            </span><span class="l">...</span><span class="w">
+</span><span class="w">        </span>}<span class="w">
+</span><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ConfigMap</span><span class="w">
+</span></code></pre></div></li>
+<li>
+<p>构建基础镜像</p>
+<p>将上述的依赖和jar包统统打包在镜像里</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-dockerfile" data-lang="dockerfile"><span class="k">FROM</span><span class="s"> flink:1.15.2-java11</span><span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="c"># 相关依赖jar包和连接器</span><span class="err">
+</span><span class="err"></span><span class="k">ARG</span> <span class="nv">hadoop_jar</span><span class="o">=</span>flink-shaded-hadoop-3-uber-3.1.1.7.2.9.0-173-9.0.jar<span class="err">
+</span><span class="err"></span><span class="k">ARG</span> <span class="nv">jdbc_jar</span><span class="o">=</span>flink-connector-jdbc-1.15.2.jar<span class="err">
+</span><span class="err"></span><span class="k">ARG</span> <span class="nv">mysql_jar</span><span class="o">=</span>mysql-connector-java-8.0.30.jar<span class="err">
+</span><span class="err"></span><span class="k">ARG</span> <span class="nv">common_cli</span><span class="o">=</span>commons-cli-1.5.0.jar<span class="err">
+</span><span class="err"></span><span class="k">ARG</span> <span class="nv">hadoop_conf</span><span class="o">=</span>core-site.xml<span class="err">
+</span><span class="err"></span><span class="k">ARG</span> <span class="nv">hdfs_conf</span><span class="o">=</span>hdfs-site.xml<span class="err">
+</span><span class="err"></span><span class="k">ENV</span> <span class="nv">HADOOP_HOME</span><span class="o">=</span>/hadoop<span class="err">
+</span><span class="err"></span><span class="k">RUN</span> mkdir -p <span class="nv">$HADOOP_HOME</span><span class="err">
+</span><span class="err"></span><span class="k">COPY</span> --chown<span class="o">=</span>flink:flink <span class="nv">$hadoop_conf</span> <span class="nv">$HADOOP_HOME</span><span class="err">
+</span><span class="err"></span><span class="k">COPY</span> --chown<span class="o">=</span>flink:flink <span class="nv">$hdfs_conf</span> <span class="nv">$HADOOP_HOME</span><span class="err">
+</span><span class="err"></span><span class="k">COPY</span> --chown<span class="o">=</span>flink:flink <span class="nv">$hadoop_jar</span> <span class="nv">$FLINK_HOME</span>/lib/<span class="err">
+</span><span class="err"></span><span class="k">COPY</span> --chown<span class="o">=</span>flink:flink <span class="nv">$common_cli</span> <span class="nv">$FLINK_HOME</span>/lib/<span class="err">
+</span><span class="err"></span><span class="k">COPY</span> --chown<span class="o">=</span>flink:flink <span class="nv">$mysql_jar</span> <span class="nv">$FLINK_HOME</span>/lib/<span class="err">
+</span><span class="err"></span><span class="k">COPY</span> --chown<span class="o">=</span>flink:flink <span class="nv">$jdbc_jar</span> <span class="nv">$FLINK_HOME</span>/lib/<span class="err">
+</span><span class="err"></span><span class="c"># 同步job的jar包</span><span class="err">
+</span><span class="err"></span><span class="k">RUN</span> mkdir -p <span class="nv">$FLINK_HOME</span>/usrlib<span class="err">
+</span><span class="err"></span><span class="k">COPY</span> target/Streaming-Job.jar  <span class="nv">$FLINK_HOME</span>/usrlib/Streaming-Job.jar<span class="err">
+</span><span class="err"></span><span class="k">COPY</span> target/Batch-Job.jar  <span class="nv">$FLINK_HOME</span>/usrlib/Batch-Job.jar<span class="err">
+</span><span class="err">
+</span><span class="err"></span><span class="k">USER</span><span class="s"> flink</span><span class="err">
+</span></code></pre></div></li>
+</ol>
+<h2 id="任务管理">任务管理</h2>
+<h3 id="任务提交">任务提交</h3>
+<p>参数要点</p>
+<ul>
+<li>资源分配</li>
+<li>prometheus监控</li>
+<li>hdfs</li>
+<li>高可用HA</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="nb">export</span> <span class="nv">HADOOP_CONF_DIR</span><span class="o">=</span>/hadoop
+
+./bin/flink run-application <span class="se">\
+</span><span class="se"></span>    --detached <span class="se">\
+</span><span class="se"></span>    --parallelism <span class="si">${</span><span class="nv">parallelism</span><span class="si">}</span> <span class="se">\
+</span><span class="se"></span>    --target kubernetes-application <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.cluster-id<span class="o">=</span><span class="nv">$task_type</span> <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.container.image<span class="o">=</span>flink-java11:<span class="si">${</span><span class="nv">release_num</span><span class="si">}</span> <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.jobmanager.cpu<span class="o">=</span><span class="nv">$jm_cpu</span> <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.taskmanager.cpu<span class="o">=</span><span class="nv">$tm_cpu</span> <span class="se">\
+</span><span class="se"></span>    -Dtaskmanager.numberOfTaskSlots<span class="o">=</span><span class="nv">$tm_slot</span> <span class="se">\
+</span><span class="se"></span>    -Dtaskmanager.memory.process.size<span class="o">=</span><span class="si">${</span><span class="nv">tm_mem</span><span class="si">}</span>mb <span class="se">\
+</span><span class="se"></span>    -Dtaskmanager.memory.managed.fraction<span class="o">=</span>0.05 <span class="se">\
+</span><span class="se"></span>    -Dtaskmanager.memory.network.fraction<span class="o">=</span>0.05 <span class="se">\
+</span><span class="se"></span>    -Dtaskmanager.memory.jvm-overhead.fraction<span class="o">=</span>0.05 <span class="se">\
+</span><span class="se"></span>    -Djobmanager.memory.process.size<span class="o">=</span>700mb <span class="se">\
+</span><span class="se"></span>    -Djobmanager.memory.enable-jvm-direct-memory-limit <span class="se">\
+</span><span class="se"></span>    -Dfs.default-scheme<span class="o">=</span>hdfs://datacluster <span class="se">\
+</span><span class="se"></span>    -Dmetrics.reporter.promgateway.class<span class="o">=</span>org.apache.flink.metrics.prometheus.PrometheusPushGatewayReporter <span class="se">\
+</span><span class="se"></span>    -Dmetrics.reporter.promgateway.hostUrl<span class="o">=</span>http://192.168.0.1:9091 <span class="se">\
+</span><span class="se"></span>    -Dmetrics.reporter.promgateway.jobName<span class="o">=</span>flink <span class="se">\
+</span><span class="se"></span>    -Dmetrics.reporter.promgateway.deleteOnShutdown<span class="o">=</span><span class="nb">true</span> <span class="se">\
+</span><span class="se"></span>    -Dmetrics.reporter.promgateway.randomJobNameSuffix<span class="o">=</span><span class="nb">true</span> <span class="se">\
+</span><span class="se"></span>    -Dmetrics.reporter.promgateway.interval<span class="o">=</span><span class="m">60</span>  <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.jobmanager.node-selector<span class="o">=</span>task_type:streaming <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.taskmanager.node-selector<span class="o">=</span>task_type:streaming <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.rest-service.exposed.type<span class="o">=</span>NodePort <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.rest-service.exposed.node-port-address-type<span class="o">=</span>ExternalIP <span class="se">\
+</span><span class="se"></span>    -Dhigh-availability<span class="o">=</span>org.apache.flink.kubernetes.highavailability.KubernetesHaServicesFactory <span class="se">\
+</span><span class="se"></span>    -Dhigh-availability.storageDir<span class="o">=</span>hdfs://datacluster/flink/recovery <span class="se">\
+</span><span class="se"></span>    -Drestart-strategy<span class="o">=</span>fixed-delay <span class="se">\
+</span><span class="se"></span>    -Drestart-strategy.fixed-delay.attempts<span class="o">=</span><span class="m">10</span> <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.namespace<span class="o">=</span>flink <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.service-account<span class="o">=</span>flink-sa <span class="se">\
+</span><span class="se"></span>    -Denv.hadoop.conf.dir<span class="o">=</span>/hadoop <span class="se">\
+</span><span class="se"></span>    -Dkubernetes.container.image.pull-policy<span class="o">=</span>Always <span class="se">\
+</span><span class="se"></span>    -Dflink.hadoop.dfs.client.failover.proxy.provider.datacluster<span class="o">=</span>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider <span class="se">\
+</span><span class="se"></span>    local:///opt/flink/usrlib/<span class="si">${</span><span class="nv">tm_jar</span><span class="si">}</span>
+</code></pre></div><p>为了方便提交,已经集成在脚本submit_streaming_job.sh里</p>
+<h3 id="任务取消">任务取消</h3>
+<p>HA方案下job_id固定为00000000000000000000000000000000</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">./bin/flink cancel --target kubernetes-application <span class="se">\
+</span><span class="se"></span>-Dkubernetes.namespace<span class="o">=</span>flink <span class="se">\
+</span><span class="se"></span>-Dkubernetes.service-account<span class="o">=</span>flink-sa <span class="se">\
+</span><span class="se"></span>-Dkubernetes.cluster-id<span class="o">=</span><span class="nv">$cluster_id</span> <span class="nv">$job_id</span>
+</code></pre></div><h3 id="任务列表">任务列表</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">./bin/flink list --target kubernetes-application <span class="se">\
+</span><span class="se"></span>-Dkubernetes.namespace<span class="o">=</span>flink <span class="se">\
+</span><span class="se"></span>-Dkubernetes.service-account<span class="o">=</span>flink-sa <span class="se">\
+</span><span class="se"></span>-Dkubernetes.cluster-id<span class="o">=</span><span class="nv">$cluster_id</span>
+</code></pre></div><h2 id="常见问题">常见问题</h2>
+<ul>
+<li>
+<p>通过更新镜像的方式进行代码更新是不可行的,jobmanager实际是独立的pod,相关配置在configmap中,因此更新deployment的镜像文件并不会更新jobmanager的pod.详见<a class="link" href="https://lists.apache.org/thread/7trxzjf1gbsz3v2t6q7zbm7575258gf5"  target="_blank" rel="noopener"
+    >讨论</a>.正确的做法是先cacel job,再重新submit</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash">bash cacel_streaming_job.sh task1 <span class="o">&amp;&amp;</span> bash submit_streaming_job.sh task1 <span class="nv">$RELEASE_NUM</span>
+</code></pre></div></li>
+<li>
+<p>外部prometheus监控需要配置自动发现pod,目前通过apiserver proxy的方式测试没成功,所以采用pushgateway的方式,缺点是必须手动清理过期数据.当前版本测试下来关于backpressured的相关指标并不准确</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"> -Dmetrics.reporter.promgateway.hostUrl<span class="o">=</span>http://192.168.0.1:9091 <span class="se">\
+</span><span class="se"></span> -Dmetrics.reporter.promgateway.jobName<span class="o">=</span>flink <span class="se">\
+</span><span class="se"></span> -Dmetrics.reporter.promgateway.deleteOnShutdown<span class="o">=</span><span class="nb">true</span> <span class="se">\
+</span><span class="se"></span> -Dmetrics.reporter.promgateway.randomJobNameSuffix<span class="o">=</span><span class="nb">true</span> <span class="se">\
+</span><span class="se"></span> -Dmetrics.reporter.promgateway.interval<span class="o">=</span><span class="m">60</span>  <span class="se">\
+</span></code></pre></div></li>
+<li>
+<p>内存配置,据官方文档阐述,只需要配置<code>jobmanager.memory.process.size</code>和<code>taskmanager.memory.process.size</code>即可,其他的内存会自动计算,但实际应用下来,一些默认系数会偏大,导致出现跟最大值最小值不匹配的报错.因此,自主定义更为可靠. 为了更加方便计算,我整理了一个表格公式</p>
+<ul>
+<li>一些带有默认值的
+<ul>
+<li>JVM Metaspace = 256</li>
+<li>JVM Heap/Framework Heap = 128</li>
+<li>Direct Memory/Framework Off-Heap=128</li>
+</ul>
+</li>
+<li>一些带有默认系数的
+<ul>
+<li>JVM Overhead= Max(Total Process Memory * fraction JVM Overhead, 192)   min-max: (192,1000)</li>
+<li>Off-Heap Memory/Managed Memory = (Total Process Memory - Mem JVM metaspace - Mem JVM Overhead) * fraction Managed Memory</li>
+<li>Direct Memory/Network = ((Total Process Memory - Mem JVM metaspace - Mem JVM Overhead) * fraction network)</li>
+</ul>
+</li>
+<li>自动计算的
+<ul>
+<li>JVM Heap/Task Heap = Total Process Memory - JVM Metaspace Memory -  JVM Overhead Memory - Framework Heap − Framwork Off-Heap - Task Off-Heap - Managed Memory - Network</li>
+</ul>
+</li>
+</ul>
+<p><figure 
+	
+		class="gallery-image" 
+		style="
+			flex-grow: 274; 
+			flex-basis: 659px"
+	>
+	<a href="/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/flink-mem.png" data-size="967x352">
+		<img src="/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/flink-mem.png"
+			width="967"
+			height="352"
+			srcset="/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/flink-mem_hu5996ff7f17241c5265739216f3b9504a_62999_480x0_resize_box_3.png 480w, /p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/flink-mem_hu5996ff7f17241c5265739216f3b9504a_62999_1024x0_resize_box_3.png 1024w"
+			loading="lazy"
+			alt="内存模型计算">
+	</a>
+	
+	<figcaption>内存模型计算</figcaption>
+	
+</figure></p>
+</li>
+</ul>
+<h2 id="参考文档">参考文档</h2>
+<ol>
+<li><a class="link" href="https://www.alibabacloud.com/blog/packaging-issues-in-datastream-development_598837"  target="_blank" rel="noopener"
+    >https://www.alibabacloud.com/blog/packaging-issues-in-datastream-development_598837</a></li>
+<li><a class="link" href="https://nightlies.apache.org/flink/flink-docs-release-1.15/docs/deployment/resource-providers/native_kubernetes/"  target="_blank" rel="noopener"
+    >https://nightlies.apache.org/flink/flink-docs-release-1.15/docs/deployment/resource-providers/native_kubernetes/</a></li>
+</ol>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/flink/">flink</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>本站采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">「署名-非商业性使用-相同方式共享4.0国际协议」(CC-BY-NC-SA 4.0)</a>, 转载署名，禁止商用，违权必究！</span>
+    </section>
+    </footer>
+
+
+    
+</article>
+
+    
+
+    <aside class="related-contents--wrapper">
+    
+    
+        <h2 class="section-title">Related contents</h2>
+        <div class="related-contents">
+            <div class="flex article-list--tile">
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%9A%8F%E7%AC%94%E9%AA%91%E8%A1%8C%E6%97%A5%E8%AE%B0-1/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%9A%8F%E7%AC%94%E9%AA%91%E8%A1%8C%E6%97%A5%E8%AE%B0-1/riding.eaf190db9a5b01184e3f1cff649cef06_hud7fb56c0fae5c4b757fc120fed8f50a5_105445_250x150_fill_q75_box_smart1.jpg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post 【随笔】骑行日记-1"
+                        
+                        data-hash="md5-6vGQ25pbARhOPxz/ZJzvBg==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">【随笔】骑行日记-1</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/">
+        
+        
+            <div class="article-image">
+                <img src="/p/node_exporter%E5%9C%A8k8s%E9%9B%86%E7%BE%A4%E7%9A%84%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/hardware_monitor.0afb938fee3d45955dcc45ce112f7279_hu29c20fb19d2aaa59a3207076dda60f90_49933_250x150_fill_box_smart1_3.png" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post node_exporter在k8s集群的部署方案"
+                        
+                        data-hash="md5-CvuTj&#43;49RZVdzEXOES9yeQ==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">node_exporter在k8s集群的部署方案</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E6%95%B0%E6%8D%AE%E6%B9%96%E5%8F%8A%E5%85%B6%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5%E6%80%A7%E8%B0%83%E7%A0%94/lake.b7b25110b382cae3afb4e59ab416fe18_hu4a54f6cc00d4e0599bb1fb51fbd2eda0_63589_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post 数据湖及其相关概念性调研"
+                        
+                        data-hash="md5-t7JRELOCyuOvtOWatBb&#43;GA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">数据湖及其相关概念性调研</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E9%83%A8%E7%BD%B2%E7%AD%96%E7%95%A5%E5%8F%8A%E5%AE%B9%E5%99%A8%E5%8C%96%E5%AE%9E%E7%8E%B0/canary.e6df03935026eee150a15c1ec8a4538c_hu027b0aea857f9d892a6eb44041b99305_1876819_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post 部署策略及容器化实现"
+                        
+                        data-hash="md5-5t8Dk1Am7uFQoVweyKRTjA==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">部署策略及容器化实现</h2>
+        </div>
+    </a>
+</article>
+                
+                    
+<article class="has-image">
+    <a href="/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/">
+        
+        
+            <div class="article-image">
+                <img src="/p/ubuntu%E5%8D%87%E7%BA%A7python%E7%89%88%E6%9C%AC%E6%AD%A3%E7%A1%AE%E5%A7%BF%E5%8A%BF/python.8c8d3f1f65e352e0ecafd279a08eb0c1_hu670cf3820e5abe15cd8fd5f6cf0ba20e_87306_250x150_fill_q75_box_smart1.jpeg" 
+                        width="250" 
+                        height="150" 
+                        loading="lazy"
+                        alt="Featured image of post ubuntu升级python版本正确姿势"
+                        
+                        data-hash="md5-jI0/H2XjUuDsr9J5oI6wwQ==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">ubuntu升级python版本正确姿势</h2>
+        </div>
+    </a>
+</article>
+                
+            </div>
+        </div>
+    
+</aside>
+
+     
+    
+        
+    <script src="https://utteranc.es/client.js" 
+        repo="tinohean/hugo"
+        issue-term="pathname"
+        
+        label="comment"
+        
+        crossorigin="anonymous"
+        async
+        >
+</script>
+
+<style>
+    .utterances {
+        max-width: unset;
+    }
+</style>
+
+<script>
+    function setUtterancesTheme(theme) {
+        let utterances = document.querySelector('.utterances iframe');
+        if (utterances) {
+            utterances.contentWindow.postMessage(
+                {
+                    type: 'set-theme',
+                    theme: `github-${theme}`
+                },
+                'https://utteranc.es'
+            );
+        }
+    }
+
+    addEventListener('message', event => {
+        if (event.origin !== 'https://utteranc.es') return;
+        setUtterancesTheme(document.documentElement.dataset.scheme)
+    });
+
+    window.addEventListener('onColorSchemeChange', (e) => {
+        setUtterancesTheme(e.detail)
+    })
+</script>
+
+
+    
+
+    <footer class="site-footer">
+    <section class="copyright">
+        &copy; 
+        
+            2017 - 
+        
+        2022 半岛无风
+    </section>
+    
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.6.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer="true"
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+        <aside class="sidebar right-sidebar sticky">
+            <section class="widget archives">
+                <div class="widget-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+                </div>
+                <h2 class="widget-title section-title">Table of contents</h2>
+                
+                <div class="widget--toc">
+                    <nav id="TableOfContents">
+  <ol>
+    <li><a href="#集群需求及依赖">集群需求及依赖</a>
+      <ol>
+        <li><a href="#k8s集群需求">K8S集群需求</a></li>
+        <li><a href="#flink集群依赖">Flink集群依赖</a></li>
+      </ol>
+    </li>
+    <li><a href="#k8s集群配置">K8S集群配置</a></li>
+    <li><a href="#任务管理">任务管理</a>
+      <ol>
+        <li><a href="#任务提交">任务提交</a></li>
+        <li><a href="#任务取消">任务取消</a></li>
+        <li><a href="#任务列表">任务列表</a></li>
+      </ol>
+    </li>
+    <li><a href="#常见问题">常见问题</a></li>
+    <li><a href="#参考文档">参考文档</a></li>
+  </ol>
+</nav>
+                </div>
+            </section>
+        </aside>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                defer="false"
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+    (function () {
+        const customFont = document.createElement('link');
+        customFont.href = "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap";
+
+        customFont.type = "text/css";
+        customFont.rel = "stylesheet";
+
+        document.head.appendChild(customFont);
+    }());
+</script>
+
+    </body>
+</html>

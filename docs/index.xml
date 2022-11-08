@@ -6,7 +6,23 @@
         <description>Recent content on 半岛无风</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en-us</language>
-        <lastBuildDate>Sat, 13 Aug 2022 11:59:22 +0800</lastBuildDate><atom:link href="http://tinohean.top/index.xml" rel="self" type="application/rss+xml" /><item>
+        <lastBuildDate>Tue, 08 Nov 2022 16:30:50 +0800</lastBuildDate><atom:link href="http://tinohean.top/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>Flink on native Kubernetes部署方案</title>
+        <link>http://tinohean.top/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</link>
+        <pubDate>Tue, 08 Nov 2022 16:30:50 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</guid>
+        <description>&lt;img src="http://tinohean.top/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/flink.jpeg" alt="Featured image of post Flink on native Kubernetes部署方案" /&gt;集群需求及依赖 K8S集群需求 根据官方文档需求部署相关集群,并创建对应权限的SA
+ Kubernetes &amp;gt;= 1.9. KubeConfig, which has access to list, create, delete pods and services, configurable via ~/.kube/config. Enabled Kubernetes DNS. default service account with RBAC permissions to create, delete pods. Service account with permissions to create, edit, delete ConfigMaps.  Flink集群依赖 跟Spark类似,Flink依赖一些库/连接器,比如高可用的checkpoints需要hdfs进行存储,batch job写数据需要mysql连接器等. 相关连接器和jar包需要集成在镜像$FLINK_HOME/lib目录下
+  依赖HA架构的HDFS集群
+  Hadoop依赖,以下任选一个下载
+ https://mvnrepository.com/artifact/org.apache.flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0 https://repository.cloudera.com/artifactory/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3-uber/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-uber-3.1.1.7.2.9.0-173-9.0.jar  由于版本没办法灵活匹配,社区维护能力不足等原因,该jar包官方已经不在维护,详见Flink-11086
+目前官方推荐方法是设置export HADOOP_CLASSPATH=hadoop classpath环境变量,但这意味着你要集成整个hadoop目录
+  HDFS集群两个配置文件hdfs-site.xml和core-site.xml需要集成在镜像$HADOOP_CONF_DIR中
+  commons-cli-1.5.0.jar
+ https://mvnrepository.com/artifact/commons-cli/commons-cli/1.5.0      依赖mysql作为报表数据输出</description>
+        </item>
+        <item>
         <title>【随笔】骑行日记-1</title>
         <link>http://tinohean.top/p/%E9%9A%8F%E7%AC%94%E9%AA%91%E8%A1%8C%E6%97%A5%E8%AE%B0-1/</link>
         <pubDate>Sat, 13 Aug 2022 11:59:22 +0800</pubDate>
