@@ -6,7 +6,26 @@
         <description>Recent content on 半岛无风</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en-us</language>
-        <lastBuildDate>Tue, 08 Nov 2022 16:30:50 +0800</lastBuildDate><atom:link href="http://tinohean.top/index.xml" rel="self" type="application/rss+xml" /><item>
+        <lastBuildDate>Thu, 29 Jun 2023 18:07:32 +0800</lastBuildDate><atom:link href="http://tinohean.top/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>链路追踪方案选型及试用</title>
+        <link>http://tinohean.top/p/%E9%93%BE%E8%B7%AF%E8%BF%BD%E8%B8%AA%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%E5%8F%8A%E8%AF%95%E7%94%A8/</link>
+        <pubDate>Thu, 29 Jun 2023 18:07:32 +0800</pubDate>
+        
+        <guid>http://tinohean.top/p/%E9%93%BE%E8%B7%AF%E8%BF%BD%E8%B8%AA%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%E5%8F%8A%E8%AF%95%E7%94%A8/</guid>
+        <description>&lt;img src="http://tinohean.top/p/%E9%93%BE%E8%B7%AF%E8%BF%BD%E8%B8%AA%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%E5%8F%8A%E8%AF%95%E7%94%A8/tracing.png" alt="Featured image of post 链路追踪方案选型及试用" /&gt;链路追踪 可观测性三剑客  Metrics
+相关服务在运行时被捕获的指标。一个监控指标事件包括指标本身、时间和关联的元数据。比如CPU使用率等。 Traces
+提供一个请求发往应用时所发生事情的全局视野。 Logs
+服务写入的结构或非结构化的文本记录，包括时间戳、元数据。在 OpenTelemetry 中，不属于分布式跟踪或指标的任何数据都是日志，通常缺少上下文。  链路追踪的技术演变 技术架构在近几年的不断发展下，逐渐趋向微服务、服务网格，甚至微函数的形态演变，这种功能拆分和单体缩小的架构模式带来维护成本降低，软件复用率提高等收益的同时，也导致了调用链路复杂，问题定位困难等问题，亟需新的技术方案来提高整体架构的可观测性。
+最初，谷歌的一篇论文 &amp;laquo;Dapper, a Large-Scale Distributed Systemds Tracing Infrastructure&amp;raquo; 介绍了内部未开源的Dapper这个分布式链路追踪系统的设计理念和使用场景。随后，谷歌放出了开源版的OpenCensus。
+Opentracing的诞生则试图为分布式追踪创建更多的标准化API及工具，逐渐被Zipkin、Jaeger、skywalking等支持，一时之间成为业界的标杆。
+天下大势，分久必合。最终，CNCF孵化的OpenTelemetry合并了Opentracing和OpenCensus,实现了Metric、Tracing、Logging的统一及融合，成为业界的终极和唯一标准。
+关键术语  Span
+表示工作/操作的基础单元，跟踪一个请求进行的特定操作，来描述该操作执行期间发生的情况。包括名称、时间相关的数据、结构化的日志、有关跟踪的操作的其他元数据(属性)。 Collector
+用于接收、处理和导出遥测数据的代理 Exporters
+为了可视化和分析遥测数据，需要将数据导出到收集器或后端，例如 Jaeger、Zipkin、Prometheus  选型 初步筛选了几个比较成熟的案例，比如Jaeger,Zipkin,Skywalking,Pinpoint。其中Pinpoint对性能影响最大，且支持的语言最少，基于业务场景的需求考虑最先排除掉。下面针对几个维度对几款产品进行比对
+   开源项目 开发团队 github仓库 star数量 前端UI支持 原生告警支持 prometheus监控 代码侵入 链路监控颗粒度 后端存储支持 采集端语言支持 特点 云原生部署     Jaeger Uber jaeger 17.7k 支持 无 支持 有 接口级 内存，Cassandra,kafka,ELK,ClickHouse Java Python NodeJs Go C++ UDP传输，性能好，但容易丢包 支持k8s   Zipkin twitter zipkin 16.</description>
+        </item>
+        <item>
         <title>Flink on native Kubernetes部署方案</title>
         <link>http://tinohean.top/p/flink-on-native-kubernetes%E9%83%A8%E7%BD%B2%E6%96%B9%E6%A1%88/</link>
         <pubDate>Tue, 08 Nov 2022 16:30:50 +0800</pubDate>
